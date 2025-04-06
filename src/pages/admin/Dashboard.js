@@ -17,8 +17,8 @@ const StatsGrid = styled.div`
 const StatCard = styled.div`
   background-color: white;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
+  padding: 21px;  /* 20px; */
   display: flex;
   align-items: center;
 `;
@@ -48,14 +48,14 @@ const StatValue = styled.div`
 
 const StatLabel = styled.div`
   color: #666;
-  font-size: 14px;
+  font-size: 15px; /* 14px; */
 `;
 
 const ChartContainer = styled.div`
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 20px;
-  margin-bottom: 30px;
+  margin-bottom: 31px; /* 30px; */
   
   @media (max-width: 992px) {
     grid-template-columns: 1fr;
@@ -107,15 +107,15 @@ const RecentOrdersTable = styled.table`
   }
   
   .status-pending {
-    color: #FF9800;
+    color:rgba(255, 153, 0, 0.82);
   }
   
   .status-processing {
-    color: #2196F3;
+    color:rgb(36, 134, 214);
   }
   
   .status-completed {
-    color: #4CAF50;
+    color:rgb(69, 190, 73);
   }
   
   .status-cancelled {
@@ -146,7 +146,7 @@ const Dashboard = () => {
         // const response = await adminService.getDashboardData();
         // setDashboardData(response);
       } catch (error) {
-        console.error('Failed to fetch dashboard data:', error);
+        console.error('Failed to fetch dashboards data:', error);
       }
     };
     
@@ -166,7 +166,7 @@ const Dashboard = () => {
       <DashboardContainer>
         <StatsGrid>
           <StatCard>
-            <StatIcon bgColor="rgba(76, 175, 80, 0.1)" iconColor="#4CAF50">
+            <StatIcon bgColor="rgba(57, 151, 60, 0.1)" iconColor="#4CAF50">
               <FaShoppingBag />
             </StatIcon>
             <StatContent>
@@ -186,7 +186,7 @@ const Dashboard = () => {
           </StatCard>
           
           <StatCard>
-            <StatIcon bgColor="rgba(255, 152, 0, 0.1)" iconColor="#FF9800">
+            <StatIcon bgColor="rgba(255, 153, 0, 0.22)" iconColor="#FF9800">
               <FaUsers />
             </StatIcon>
             <StatContent>
