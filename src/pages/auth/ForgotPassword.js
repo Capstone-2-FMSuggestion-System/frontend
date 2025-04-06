@@ -11,23 +11,25 @@ import authService from '../../services/authService';
 const ForgotContainer = styled.div`
   max-width: 500px;
   width: 100%;
-  padding: 30px;
-  border-radius: 8px;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(135deg, #ffffff, #f9f9f9);
   transition: all 0.3s ease;
 `;
 
 const ForgotTitle = styled.h1`
   text-align: center;
   color: #0A4D7C;
-  font-size: 28px;
-  margin-bottom: 15px;
+  font-size: 32px;
+  font-weight: bold;
+  margin-bottom: 20px;
 `;
 
 const Subtitle = styled.p`
   text-align: center;
   color: #666;
+  font-size: 16px;
   margin-bottom: 30px;
 `;
 
@@ -42,18 +44,20 @@ const Label = styled.label`
   display: block;
   margin-bottom: 8px;
   color: #333;
-  font-weight: 500;
+  font-weight: 600;
 `;
 
 const Input = styled(Field)`
   width: 100%;
-  padding: 12px 15px;
+  padding: 14px 16px;
   border: 1px solid #ddd;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 16px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
   &:focus {
     outline: none;
     border-color: #0A4D7C;
+    box-shadow: 0 0 5px rgba(10, 77, 124, 0.3);
   }
 `;
 
@@ -73,12 +77,15 @@ const BackToLogin = styled(Link)`
   color: #0A4D7C;
   text-decoration: none;
   font-size: 14px;
-  
+  font-weight: 500;
+  transition: color 0.3s ease;
+
   svg {
     margin-right: 8px;
   }
-  
+
   &:hover {
+    color: #083b5c;
     text-decoration: underline;
   }
 `;
@@ -86,25 +93,27 @@ const BackToLogin = styled(Link)`
 const SuccessMessage = styled.div`
   background-color: rgba(76, 175, 80, 0.1);
   color: #4CAF50;
-  padding: 15px;
-  border-radius: 4px;
+  padding: 20px;
+  border-radius: 6px;
   margin-bottom: 20px;
   text-align: center;
+  font-size: 16px;
+  font-weight: 500;
 `;
 
 const ForgotPassword = () => {
   const [emailSent, setEmailSent] = useState(false);
-  
+
   const initialValues = {
     email: ''
   };
-  
+
   const validationSchema = Yup.object({
     email: Yup.string()
       .email('Địa chỉ email không hợp lệ')
       .required('Email là trường bắt buộc')
   });
-  
+
   const handleSubmit = async (values, { setSubmitting, setFieldError }) => {
     try {
       await authService.resetPassword(values.email);
@@ -115,19 +124,19 @@ const ForgotPassword = () => {
       setSubmitting(false);
     }
   };
-  
+
   return (
     <AuthLayout>
       <ForgotContainer>
         <ForgotTitle>Quên mật khẩu</ForgotTitle>
         <Subtitle>Nhập email của bạn để đặt lại mật khẩu</Subtitle>
-        
+
         {emailSent && (
           <SuccessMessage>
             Chúng tôi đã gửi email hướng dẫn đặt lại mật khẩu đến email của bạn. Vui lòng kiểm tra hộp thư đến của bạn.
           </SuccessMessage>
         )}
-        
+
         <Formik
           initialValues={initialValues}
           validationSchema={validationSchema}
@@ -137,20 +146,23 @@ const ForgotPassword = () => {
             <Form>
               <FormGroup>
                 <Label htmlFor="email">Email</Label>
-                <Input 
-                  type="email" 
-                  id="email" 
-                  name="email" 
-                  placeholder="Nhập email đã đăng ký của bạn" 
+                <Input
+                  type="email"
+                  id="email"
+                  name="email"
+                  placeholder="Nhập email của bạn"
+                  autoComplete="off"
+                  required
+                  disabled={emailSent}
                 />
                 <ErrorMessage name="email" component={ErrorText} />
               </FormGroup>
-              
-              <Button 
-                type="submit" 
-                variant="secondary" 
-                fullWidth 
-                size="large" 
+
+              <Button
+                type="submit"
+                variant="secondary"
+                fullWidth
+                size="large"
                 disabled={isSubmitting || emailSent}
               >
                 {emailSent ? 'Đã gửi email' : 'Gửi yêu cầu đặt lại mật khẩu'}
@@ -158,7 +170,7 @@ const ForgotPassword = () => {
             </Form>
           )}
         </Formik>
-        
+
         <BackToLogin to="/login">
           <FaArrowLeft /> Quay lại đăng nhập
         </BackToLogin>
