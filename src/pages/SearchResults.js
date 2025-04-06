@@ -111,8 +111,9 @@ const SearchResults = () => {
           </>
         ) : (
           <NoResults>
-            <p>No results found for "{query}".</p>
-            <p>Please try a different search term or browse our categories.</p>
+            <p>No results for "{query}".</p>
+            <p>Please try a different search term or browse our other categories.</p>
+            <p>Check out our <a href="/products">latest products</a>.</p>
           </NoResults>
         )}
       </Container>
