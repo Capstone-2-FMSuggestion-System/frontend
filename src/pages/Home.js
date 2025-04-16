@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { FaTruck, FaLeaf, FaShippingFast, FaCheck } from "react-icons/fa";
-import Button from "./components/Button";
-import MainLayout from "./layouts/MainLayout";
-import productService from "./services/productService";
-import ProductCard from "./components/ProductCard";
+import MainLayout from "../layouts/MainLayout";
+import Button from "../components/common/Button/Button";
+import ProductCard from "../components/common/ProductCard/ProductCard";
+import productService from "../services/productService";
 
 const Banner = styled.div`
   position: relative;
