@@ -199,30 +199,30 @@ const CartItem = ({ item }) => {
             <span className="original">{item.price}đ</span>
           )}
         </Price>
-
-        <Actions>
-          <QuantitySelector>
-            <button onClick={decreaseQuantity}>
-              <FaMinus />
-            </button>
-            <input
-              type="number"
-              min="1"
-              value={item.quantity}
-              onChange={handleQuantityChange}
-            />
-            <button onClick={increaseQuantity}>
-              <FaPlus />
-            </button>
-          </QuantitySelector>
-
-          <RemoveButton onClick={handleRemove}>
-            <FaTrash />
-          </RemoveButton>
-        </Actions>
       </Details>
 
-      <Subtotal>{subtotal.toLocaleString()}đ</Subtotal>
+      <Actions>
+        <QuantitySelector>
+          <button onClick={decreaseQuantity}>
+            <FaMinus />
+          </button>
+          <input
+            type="number"
+            min="1"
+            value={item.quantity}
+            onChange={handleQuantityChange}
+          />
+          <button onClick={increaseQuantity}>
+            <FaPlus />
+          </button>
+        </QuantitySelector>
+
+        <RemoveButton onClick={handleRemove}>
+          <FaTrash />
+        </RemoveButton>
+      </Actions>
+
+      <Subtotal>{subtotal}đ</Subtotal>
     </Item>
   );
 };
