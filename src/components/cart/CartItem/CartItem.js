@@ -1,69 +1,81 @@
 // src/components/cart/CartItem/CartItem.js
-import React, { useContext } from 'react';
-import { Link } from 'react-router-dom';
-import styled from 'styled-components';
-import { FaTrash, FaMinus, FaPlus } from 'react-icons/fa';
-import { CartContext } from '../../../context/CartContext';
 
+import React, { useContext } from "react";
+import { Link } from "react-router-dom";
+import styled from "styled-components";
+import { FaTrash, FaMinus, FaPlus } from "react-icons/fa";
+import { CartContext } from "../../../context/CartContext";
+
+// Styled Components – Giao diện nâng cấp
 const Item = styled.div`
   display: flex;
-  align-items: center;
-  padding: 20px 0;
-  border-bottom: 1px solid #eee;
-  
-  &:last-child {
-    border-bottom: none;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 20px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+  transition: box-shadow 0.2s;
+
+  &:hover {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
   }
-  
+
   @media (max-width: 768px) {
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 15px;
   }
 `;
 
 const ImageContainer = styled.div`
-  flex: 0 0 100px;
-  margin-right: 20px;
-  
+  flex-shrink: 0;
+
   img {
-    width: 100px;
-    height: 100px;
+    width: 110px;
+    height: 110px;
     object-fit: cover;
-    border-radius: 4px;
+    border-radius: 8px;
+    border: 1px solid #eee;
   }
 `;
 
 const Details = styled.div`
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 `;
 
 const Name = styled.h3`
-  margin: 0 0 10px;
-  font-size: 16px;
-  font-weight: 500;
-  
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+
   a {
-    color: #333;
     text-decoration: none;
-    
+    color: #222;
+    transition: color 0.2s;
+
     &:hover {
-      color: #4CAF50;
+      color: #2e7d32;
     }
   }
 `;
 
 const Variant = styled.p`
-  margin: 0 0 10px;
   font-size: 14px;
-  color: #666;
+  color: #777;
 `;
 
 const Price = styled.div`
-  font-weight: 600;
-  
+  font-size: 16px;
+  color: #222;
+
   .original {
     margin-left: 8px;
     font-size: 14px;
-    color: #999;
+    color: #aaa;
     text-decoration: line-through;
     font-weight: normal;
   }
@@ -72,112 +84,102 @@ const Price = styled.div`
 const Actions = styled.div`
   display: flex;
   align-items: center;
-  margin-top: 10px;
-  
+  gap: 16px;
+  flex-wrap: wrap;
+
   @media (max-width: 768px) {
-    margin-left: auto;
-    margin-top: 0;
+    justify-content: space-between;
   }
 `;
 
 const QuantitySelector = styled.div`
   display: flex;
   align-items: center;
-  margin-right: 20px;
-  
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  overflow: hidden;
+
   button {
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: #f5f5f5;
-    border: 1px solid #ddd;
+    width: 34px;
+    height: 34px;
+    background: #f9f9f9;
+    border: none;
+    font-size: 14px;
     cursor: pointer;
-    
+    color: #333;
+
     &:hover {
-      background-color: #eee;
-    }
-    
-    &:first-child {
-      border-radius: 4px 0 0 4px;
-    }
-    
-    &:last-child {
-      border-radius: 0 4px 4px 0;
+      background: #f0f0f0;
     }
   }
-  
+
   input {
-    width: 40px;
-    height: 30px;
+    width: 48px;
+    height: 34px;
+    border: none;
+    border-left: 1px solid #ddd;
+    border-right: 1px solid #ddd;
     text-align: center;
-    border: 1px solid #ddd;
-    border-left: none;
-    border-right: none;
-    
+    font-size: 14px;
+
     &:focus {
       outline: none;
+      background: #fcfcfc;
     }
   }
 `;
 
 const RemoveButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
   background: none;
   border: none;
-  color: #d32f2f;
+  color: #e53935;
   cursor: pointer;
-  
+  font-size: 16px;
+  transition: color 0.2s;
+
   &:hover {
     color: #b71c1c;
   }
 `;
 
 const Subtotal = styled.div`
-  margin-left: auto;
   text-align: right;
   font-weight: 600;
   font-size: 16px;
-  
+  color: #333;
+
   @media (max-width: 768px) {
-    margin-left: 0;
-    width: 100%;
-    text-align: right;
+    text-align: left;
     margin-top: 10px;
   }
 `;
 
 const CartItem = ({ item }) => {
   const { updateQuantity, removeFromCart } = useContext(CartContext);
-  
+
   const handleQuantityChange = (e) => {
     const value = parseInt(e.target.value);
     if (!isNaN(value) && value > 0) {
       updateQuantity(item.id, value);
     }
   };
-  
+
   const decreaseQuantity = () => {
     if (item.quantity > 1) {
       updateQuantity(item.id, item.quantity - 1);
     }
   };
-  
+
   const increaseQuantity = () => {
     updateQuantity(item.id, item.quantity + 1);
   };
-  
+
   const handleRemove = () => {
     removeFromCart(item.id);
   };
-  
+
   const subtotal = (item.discountPrice || item.price) * item.quantity;
-  
+
   return (
     <Item>
       <ImageContainer>
@@ -185,7 +187,7 @@ const CartItem = ({ item }) => {
           <img src={item.image} alt={item.name} />
         </Link>
       </ImageContainer>
-      
+
       <Details>
         <Name>
           <Link to={`/products/${item.id}`}>{item.name}</Link>
@@ -197,30 +199,30 @@ const CartItem = ({ item }) => {
             <span className="original">{item.price}đ</span>
           )}
         </Price>
+
+        <Actions>
+          <QuantitySelector>
+            <button onClick={decreaseQuantity}>
+              <FaMinus />
+            </button>
+            <input
+              type="number"
+              min="1"
+              value={item.quantity}
+              onChange={handleQuantityChange}
+            />
+            <button onClick={increaseQuantity}>
+              <FaPlus />
+            </button>
+          </QuantitySelector>
+
+          <RemoveButton onClick={handleRemove}>
+            <FaTrash />
+          </RemoveButton>
+        </Actions>
       </Details>
-      
-      <Actions>
-        <QuantitySelector>
-          <button onClick={decreaseQuantity}>
-            <FaMinus />
-          </button>
-          <input
-            type="number"
-            min="1"
-            value={item.quantity}
-            onChange={handleQuantityChange}
-          />
-          <button onClick={increaseQuantity}>
-            <FaPlus />
-          </button>
-        </QuantitySelector>
-        
-        <RemoveButton onClick={handleRemove}>
-          <FaTrash />
-        </RemoveButton>
-      </Actions>
-      
-      <Subtotal>{subtotal}đ</Subtotal>
+
+      <Subtotal>{subtotal.toLocaleString()}đ</Subtotal>
     </Item>
   );
 };
