@@ -158,29 +158,21 @@ const CategorySection = styled.div`
   }
 `;
 
-// ✅ ĐÂY LÀ PHẦN ĐÃ THAY ĐỔI
 const CategoryCard = styled.div`
   position: relative;
   height: 200px;
-  border-radius: 12px;
+  border-radius: 8px;
   overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-
-  &:hover {
-    transform: translateY(-5px) scale(1.02);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
-  }
 
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.5s ease;
+    transition: transform 0.3s ease;
   }
 
   &:hover img {
-    transform: scale(1.1);
+    transform: scale(1.05);
   }
 
   .overlay {
@@ -189,38 +181,21 @@ const CategoryCard = styled.div`
     left: 0;
     right: 0;
     padding: 20px;
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.65), transparent 60%);
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
     color: white;
-    transition: all 0.3s ease;
 
     h3 {
       margin: 0 0 5px;
-      font-size: 1.2rem;
-      transition: transform 0.3s ease;
     }
 
     p {
       margin: 0;
       font-size: 0.9rem;
-      opacity: 0.85;
-      transition: opacity 0.3s ease;
+      opacity: 0.8;
     }
-  }
-
-  &:hover .overlay {
-    padding-bottom: 25px;
-  }
-
-  &:hover .overlay h3 {
-    transform: translateY(-5px);
-  }
-
-  &:hover .overlay p {
-    opacity: 1;
   }
 `;
 
-// COMPONENT CHÍNH
 const Home = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
