@@ -9,73 +9,63 @@ import { CartContext } from "../../../context/CartContext";
 // Styled Components – Giao diện nâng cấp
 const Item = styled.div`
   display: flex;
-  align-items: flex-start;
-  gap: 20px;
-  padding: 20px;
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  margin-bottom: 20px;
-  transition: box-shadow 0.2s;
+  align-items: center;
+  padding: 20px 0;
+  border-bottom: 1px solid #eee;
 
-  &:hover {
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+  &:last-child {
+    border-bottom: none;
   }
 
   @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 15px;
+    flex-wrap: wrap;
   }
 `;
 
 const ImageContainer = styled.div`
-  flex-shrink: 0;
+  flex: 0 0 100px;
+  margin-right: 20px;
 
   img {
-    width: 110px;
-    height: 110px;
+    width: 100px;
+    height: 100px;
     object-fit: cover;
-    border-radius: 8px;
-    border: 1px solid #eee;
+    border-radius: 4px;
   }
 `;
 
 const Details = styled.div`
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
 `;
 
 const Name = styled.h3`
-  font-size: 18px;
-  font-weight: 600;
-  margin: 0;
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 500;
 
   a {
+    color: #333;
     text-decoration: none;
-    color: #222;
-    transition: color 0.2s;
 
     &:hover {
-      color: #2e7d32;
+      color: #4caf50;
     }
   }
 `;
 
 const Variant = styled.p`
+  margin: 0 0 10px;
   font-size: 14px;
-  color: #777;
+  color: #666;
 `;
 
 const Price = styled.div`
-  font-size: 16px;
-  color: #222;
+  font-weight: 600;
 
   .original {
     margin-left: 8px;
     font-size: 14px;
-    color: #aaa;
+    color: #999;
     text-decoration: line-through;
     font-weight: normal;
   }
@@ -84,58 +74,66 @@ const Price = styled.div`
 const Actions = styled.div`
   display: flex;
   align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
+  margin-top: 10px;
 
   @media (max-width: 768px) {
-    justify-content: space-between;
+    margin-left: auto;
+    margin-top: 0;
   }
 `;
 
 const QuantitySelector = styled.div`
   display: flex;
   align-items: center;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  overflow: hidden;
+  margin-right: 20px;
 
   button {
-    width: 34px;
-    height: 34px;
-    background: #f9f9f9;
-    border: none;
-    font-size: 14px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
     cursor: pointer;
-    color: #333;
 
     &:hover {
-      background: #f0f0f0;
+      background-color: #eee;
+    }
+
+    &:first-child {
+      border-radius: 4px 0 0 4px;
+    }
+
+    &:last-child {
+      border-radius: 0 4px 4px 0;
     }
   }
 
   input {
-    width: 48px;
-    height: 34px;
-    border: none;
-    border-left: 1px solid #ddd;
-    border-right: 1px solid #ddd;
+    width: 40px;
+    height: 30px;
     text-align: center;
-    font-size: 14px;
+    border: 1px solid #ddd;
+    border-left: none;
+    border-right: none;
 
     &:focus {
       outline: none;
-      background: #fcfcfc;
     }
   }
 `;
 
 const RemoveButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
   background: none;
   border: none;
-  color: #e53935;
+  color: #d32f2f;
   cursor: pointer;
-  font-size: 16px;
-  transition: color 0.2s;
 
   &:hover {
     color: #b71c1c;
@@ -143,13 +141,15 @@ const RemoveButton = styled.button`
 `;
 
 const Subtotal = styled.div`
+  margin-left: auto;
   text-align: right;
   font-weight: 600;
   font-size: 16px;
-  color: #333;
 
   @media (max-width: 768px) {
-    text-align: left;
+    margin-left: 0;
+    width: 100%;
+    text-align: right;
     margin-top: 10px;
   }
 `;
