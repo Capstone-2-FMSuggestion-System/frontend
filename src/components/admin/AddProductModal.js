@@ -362,14 +362,14 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product =
     is_featured: false,
     image: null
   });
-  
+
   const [errors, setErrors] = useState({});
   const [images, setImages] = useState([]);
   const [primaryImageIndex, setPrimaryImageIndex] = useState(0);
   const isEditing = !!product;
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
-  
+
   useEffect(() => {
     if (product) {
       // Populate form with existing product data
@@ -383,11 +383,11 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product =
         stock_quantity: product.stock_quantity || 0,
         is_featured: product.is_featured || false
       });
-      
+
       // Xử lý hình ảnh sản phẩm
       const productImages = [];
       let primaryIndex = 0;
-      
+
       // Sử dụng image_urls nếu có
       if (product.image_urls && product.image_urls.length > 0) {
         product.image_urls.forEach((url, index) => {
@@ -417,7 +417,7 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product =
           isExisting: true
         });
       }
-      
+
       setImages(productImages);
       setPrimaryImageIndex(primaryIndex);
     } else {
@@ -436,17 +436,17 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product =
       setPrimaryImageIndex(0);
     }
   }, [product]);
-  
+
   if (!isOpen) return null;
-  
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
-      [name]: type === 'checkbox' ? checked : 
-              type === 'number' ? parseFloat(value) : value
+      [name]: type === 'checkbox' ? checked :
+        type === 'number' ? parseFloat(value) : value
     });
-    
+
     if (errors[name]) {
       setErrors({
         ...errors,
@@ -454,15 +454,15 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product =
       });
     }
   };
-  
+
   const handleImageUpload = (e) => {
     if (e.target.files) {
       const newImages = [...images];
-      
+
       Array.from(e.target.files).forEach(file => {
         // Tạo URL xem trước cho hình ảnh
         const imageUrl = URL.createObjectURL(file);
-        
+
         // Thêm vào mảng hình ảnh
         newImages.push({
           url: imageUrl,
@@ -470,24 +470,24 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product =
           isExisting: false
         });
       });
-      
+
       setImages(newImages);
-      
+
       if (errors.image) {
         setErrors({
           ...errors,
           image: null
         });
       }
-      
+
       // Reset input để có thể chọn lại cùng một file
       e.target.value = "";
     }
   };
-  
+
   const handleDeleteImage = (index) => {
     const newImages = [...images];
-    
+
     // Nếu xóa ảnh chính, hãy đặt ảnh đầu tiên làm ảnh chính
     if (index === primaryImageIndex) {
       const newPrimaryIndex = index === 0 && newImages.length > 1 ? 1 : 0;
@@ -496,92 +496,84 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product =
       // Nếu xóa ảnh trước ảnh chính, cập nhật lại index của ảnh chính
       setPrimaryImageIndex(primaryImageIndex - 1);
     }
-    
+
     // Xóa hình ảnh
     newImages.splice(index, 1);
     setImages(newImages);
   };
-  
+
   const handleSetPrimary = (index) => {
     setPrimaryImageIndex(index);
   };
-  
+
   const validate = () => {
     const newErrors = {};
-    
+
     if (!formData.name.trim()) {
       newErrors.name = 'Tên sản phẩm là bắt buộc';
     }
-    
+
     if (!formData.category_id) {
       newErrors.category_id = 'Danh mục là bắt buộc';
     }
-    
+
     if (!formData.price || formData.price <= 0) {
       newErrors.price = 'Giá phải lớn hơn 0';
     }
-    
+
     if (!formData.original_price || formData.original_price <= 0) {
       newErrors.original_price = 'Giá gốc phải lớn hơn 0';
     }
-    
+
     if (!formData.description.trim()) {
       newErrors.description = 'Mô tả là bắt buộc';
     }
-    
+
     // Yêu cầu ít nhất một hình ảnh
     if (images.length === 0) {
       newErrors.image = 'Vui lòng thêm ít nhất một hình ảnh sản phẩm';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validate()) {
-      return;
-    }
-    
+    if (!validate()) return;
+
     try {
       setIsUploading(true);
       setUploadError('');
-      
+
       // Chuẩn bị dữ liệu sản phẩm
-      const productData = new FormData();
-      
-      // Thêm các trường thông tin sản phẩm
-      productData.append('name', formData.name);
-      productData.append('category_id', formData.category_id);
-      productData.append('price', formData.price);
-      productData.append('original_price', formData.original_price);
-      
-      if (formData.unit) {
-        productData.append('unit', formData.unit);
-      }
-      
-      productData.append('description', formData.description);
-      productData.append('stock_quantity', parseInt(formData.stock_quantity, 10));
-      productData.append('is_featured', formData.is_featured);
-      
-      // Thêm hình ảnh chính vào FormData
+      const productData = {
+        name: formData.name,
+        category_id: formData.category_id,
+        price: formData.price,
+        original_price: formData.original_price,
+        unit: formData.unit || '',
+        description: formData.description,
+        stock_quantity: formData.stock_quantity,
+        is_featured: formData.is_featured
+      };
+
+      // Thêm hình ảnh chính nếu có
       if (images.length > 0 && images[primaryImageIndex].file) {
-        productData.append('file', images[primaryImageIndex].file);
+        productData.image = images[primaryImageIndex].file;
       }
-      
+
       // Gọi API để lưu sản phẩm
       await onSave(productData);
       onClose();
     } catch (error) {
       console.error('Failed to save product:', error);
-      setUploadError('Lỗi khi lưu sản phẩm: ' + error.message);
+      setUploadError('Lỗi khi lưu sản phẩm: ' + (error.message || 'Có lỗi xảy ra'));
     } finally {
       setIsUploading(false);
     }
   };
-  
+
   return (
     <ModalOverlay>
       <ModalContainer>
@@ -591,20 +583,20 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product =
             <FaTimes />
           </CloseButton>
         </ModalHeader>
-        
+
         <ModalBody>
           <form onSubmit={handleSubmit}>
             <ImageUploadContainer>
               <ImageUploadLabel>Hình ảnh sản phẩm</ImageUploadLabel>
               <ImageGallery>
                 {images.map((image, index) => (
-                  <ImagePreviewContainer 
-                    key={index} 
+                  <ImagePreviewContainer
+                    key={index}
                     isPrimary={index === primaryImageIndex}
                   >
                     <ImagePreview src={image.url} alt={`Sản phẩm ${index + 1}`} />
                     <ImageActions>
-                      <ImageActionButton 
+                      <ImageActionButton
                         type="button"
                         className="primary-button"
                         onClick={() => handleSetPrimary(index)}
@@ -613,8 +605,8 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product =
                       >
                         <FaStar />
                       </ImageActionButton>
-                      <ImageActionButton 
-                        type="button" 
+                      <ImageActionButton
+                        type="button"
                         className="delete-button"
                         onClick={() => handleDeleteImage(index)}
                         title="Xóa ảnh"
@@ -624,30 +616,30 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product =
                     </ImageActions>
                   </ImagePreviewContainer>
                 ))}
-                
+
                 {/* Container để thêm ảnh mới */}
                 <EmptyImageContainer onClick={() => document.getElementById('image-upload').click()}>
                   <FaPlus />
                   <span>Thêm ảnh</span>
                 </EmptyImageContainer>
               </ImageGallery>
-              
+
               <UploadButton as="label">
                 <FaCloudUploadAlt />
                 Tải lên nhiều ảnh
-                <input 
+                <input
                   id="image-upload"
-                  type="file" 
+                  type="file"
                   accept="image/*"
                   onChange={handleImageUpload}
                   multiple
                 />
               </UploadButton>
-              
+
               {errors.image && <FormError>{errors.image}</FormError>}
               {uploadError && <FormError>{uploadError}</FormError>}
             </ImageUploadContainer>
-            
+
             <FormRow>
               <FormColumn>
                 <FormGroup>
@@ -662,7 +654,7 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product =
                   {errors.name && <FormError>{errors.name}</FormError>}
                 </FormGroup>
               </FormColumn>
-              
+
               <FormColumn>
                 <FormGroup>
                   <FormLabel>Danh mục</FormLabel>
@@ -682,7 +674,7 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product =
                 </FormGroup>
               </FormColumn>
             </FormRow>
-            
+
             <FormGroup>
               <FormLabel>Đơn vị</FormLabel>
               <FormInput
@@ -693,7 +685,7 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product =
                 placeholder="vd: kg, gói, thùng"
               />
             </FormGroup>
-            
+
             <FinancialContainer>
               <FinancialRow>
                 <FormGroup>
@@ -709,7 +701,7 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product =
                   />
                   {errors.price && <FormError>{errors.price}</FormError>}
                 </FormGroup>
-                
+
                 <FormGroup>
                   <FormLabel>Giá gốc</FormLabel>
                   <FormInput
@@ -725,7 +717,7 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product =
                 </FormGroup>
               </FinancialRow>
             </FinancialContainer>
-            
+
             <DescriptionContainer>
               <FormLabel>Mô tả</FormLabel>
               <FormTextarea
@@ -736,7 +728,7 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product =
               />
               {errors.description && <FormError>{errors.description}</FormError>}
             </DescriptionContainer>
-            
+
             <CheckboxContainer>
               <input
                 type="checkbox"
@@ -750,7 +742,7 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product =
               </label>
               <p>Sản phẩm này sẽ xuất hiện trên trang chủ.</p>
             </CheckboxContainer>
-            
+
             <InventoryInput>
               <FormLabel>Có sẵn trong kho</FormLabel>
               <FormInput
@@ -764,19 +756,19 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product =
             </InventoryInput>
           </form>
         </ModalBody>
-        
+
         <ModalFooter>
           <Button variant="outline" onClick={onClose}>
             Huỷ
           </Button>
-          <Button 
-            variant="secondary" 
-            onClick={handleSubmit} 
+          <Button
+            variant="secondary"
+            onClick={handleSubmit}
             disabled={isLoading || isUploading}
           >
             {isLoading || isUploading ? (
               <>
-                <LoadingSpinner /> 
+                <LoadingSpinner />
                 {isUploading ? 'Đang tải lên...' : 'Đang lưu...'}
               </>
             ) : (
