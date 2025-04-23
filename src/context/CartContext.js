@@ -1,6 +1,6 @@
-
 // src/context/CartContext.js
 import React, { createContext, useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 
 export const CartContext = createContext();
 
@@ -32,6 +32,7 @@ export const CartProvider = ({ children }) => {
           ...newItems[existingItemIndex],
           quantity: newItems[existingItemIndex].quantity + quantity
         };
+        toast.success(`Đã cập nhật số lượng ${product.name} trong giỏ hàng!`);
       } else {
         // Add new item to cart
         newItems = [
@@ -41,6 +42,7 @@ export const CartProvider = ({ children }) => {
             quantity
           }
         ];
+        toast.success(`Đã thêm ${product.name} vào giỏ hàng!`);
       }
 
       // Calculate new total
@@ -58,6 +60,7 @@ export const CartProvider = ({ children }) => {
 
   const removeFromCart = (productId) => {
     setCart(prevCart => {
+      const removedItem = prevCart.items.find(item => item.id === productId);
       const newItems = prevCart.items.filter(item => item.id !== productId);
       
       // Calculate new total
@@ -65,6 +68,10 @@ export const CartProvider = ({ children }) => {
         (total, item) => total + (item.discountPrice || item.price) * item.quantity,
         0
       );
+
+      if (removedItem) {
+        toast.info(`Đã xóa ${removedItem.name} khỏi giỏ hàng`);
+      }
 
       return {
         items: newItems,
@@ -81,6 +88,11 @@ export const CartProvider = ({ children }) => {
         item.id === productId ? { ...item, quantity } : item
       );
       
+      const updatedItem = newItems.find(item => item.id === productId);
+      if (updatedItem) {
+        toast.info(`Đã cập nhật số lượng ${updatedItem.name} thành ${quantity}`);
+      }
+
       // Calculate new total
       const totalAmount = newItems.reduce(
         (total, item) => total + (item.discountPrice || item.price) * item.quantity,
@@ -96,6 +108,7 @@ export const CartProvider = ({ children }) => {
 
   const clearCart = () => {
     setCart({ items: [], totalAmount: 0 });
+    toast.info('Đã xóa toàn bộ giỏ hàng');
   };
 
   const getCartItemCount = () => {

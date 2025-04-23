@@ -148,13 +148,14 @@ const ProductCard = ({ product }) => {
   };
   
   // Hiển thị log cho debug
-  console.log("ProductCard rendering for:", product.name, "with ID:", product.id);
+  console.log("ProductCard rendering for:", product.name, "with ID:", product.product_id);
   console.log("Image data:", { image: product.image, images: product.images });
   
   // Xác định giá hiển thị
-  const currentPrice = product.discountPrice ? product.discountPrice : product.originalPrice;
-  const discountPercentage = product.discountPrice 
-    ? Math.round(((product.originalPrice - product.discountPrice) / product.originalPrice) * 100) 
+  const currentPrice = product.price;
+  const originalPrice = product.original_price;
+  const discountPercentage = originalPrice > currentPrice 
+    ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100) 
     : 0;
   
   // Lấy ảnh chính
@@ -163,38 +164,32 @@ const ProductCard = ({ product }) => {
   return (
     <Card>
       <ImageContainer>
-        <Link to={`/products/${product.id}`}>
-          {productImage ? (
-            <img 
-              src={productImage} 
-              alt={product.name}
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = 'https://via.placeholder.com/300x300?text=Error+Loading';
-              }}
-            />
-          ) : (
-            <div className="no-image">Không có hình ảnh</div>
-          )}
-        </Link>
+        <img 
+          src={productImage} 
+          alt={product.name}
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = 'https://via.placeholder.com/300x300?text=Error+Loading';
+          }}
+        />
         {discountPercentage > 0 && (
           <DiscountBadge>{discountPercentage}% OFF</DiscountBadge>
         )}
       </ImageContainer>
       <Content>
         <Title>
-          <Link to={`/products/${product.id}`}>{product.name}</Link>
+          <Link to={`/products/${product.product_id}`}>{product.name}</Link>
         </Title>
         <Rating>
           {[...Array(5)].map((_, i) => (
-            <FaStar key={i} color={i < Math.floor(product.rating) ? "#FFD700" : "#e4e5e9"} />
+            <FaStar key={i} color={i < 4 ? "#FFD700" : "#e4e5e9"} />
           ))}
-          <span>({product.reviewCount || 0})</span>
+          <span>(0)</span>
         </Rating>
         <Price>
           <span className="current">{Math.round(currentPrice).toLocaleString()}đ/{product.unit || 'kg'}</span>
-          {product.discountPrice && (
-            <span className="original">{Math.round(product.originalPrice).toLocaleString()}đ</span>
+          {originalPrice > currentPrice && (
+            <span className="original">{Math.round(originalPrice).toLocaleString()}đ</span>
           )}
         </Price>
         <AddToCartButton onClick={handleAddToCart}>

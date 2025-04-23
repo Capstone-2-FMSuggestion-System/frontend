@@ -11,6 +11,8 @@ import { AuthContext } from '../../context/AuthContext';
 const LoginContainer = styled.div`
   max-width: 500px;
   width: 100%;
+  padding: 30px;
+  margin: 0 auto;
   padding: 15px 25px;
   border-radius: 8px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
@@ -171,23 +173,22 @@ const Login = () => {
   const { login, loginWithGoogle, loginWithFacebook } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const redirectPath = location.state?.from || '/';
-  
   const [blockedAccountError, setBlockedAccountError] = useState(false);
-  
+
   const initialValues = {
     username_or_email: '',
     password: ''
   };
-  
+
   const validationSchema = Yup.object({
     username_or_email: Yup.string()
       .required('Tên đăng nhập hoặc email là trường bắt buộc'),
     password: Yup.string()
       .required('Mật khẩu là trường bắt buộc')
   });
-  
+
   const handleSubmit = async (values, { setSubmitting, setFieldError }) => {
     try {
       setBlockedAccountError(false);
@@ -203,7 +204,7 @@ const Login = () => {
       setSubmitting(false);
     }
   };
-  
+
   const handleGoogleLogin = async () => {
     try {
       await loginWithGoogle();
@@ -212,7 +213,7 @@ const Login = () => {
       console.error('Google login failed:', error);
     }
   };
-  
+
   const handleFacebookLogin = async () => {
     try {
       await loginWithFacebook();
@@ -221,26 +222,26 @@ const Login = () => {
       console.error('Facebook login failed:', error);
     }
   };
-  
+
   return (
     <AuthLayout>
       <LoginContainer>
         <LoginTitle>Đăng Nhập</LoginTitle>
-        
+
         {blockedAccountError && (
-          <div style={{ 
-            padding: '8px 12px', 
-            background: '#ffebee', 
-            color: '#c62828', 
-            borderRadius: '4px', 
-            marginBottom: '16px', 
+          <div style={{
+            padding: '8px 12px',
+            background: '#ffebee',
+            color: '#c62828',
+            borderRadius: '4px',
+            marginBottom: '16px',
             fontSize: '13px',
             textAlign: 'center'
           }}>
             Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.
           </div>
         )}
-        
+
         <Formik
           initialValues={initialValues}
           validationSchema={validationSchema}
@@ -250,11 +251,11 @@ const Login = () => {
             <Form>
               <FormGroup>
                 <Label htmlFor="username_or_email">Tên đăng nhập hoặc Email</Label>
-                <Input 
-                  type="text" 
-                  id="username_or_email" 
-                  name="username_or_email" 
-                  placeholder="Nhập tên đăng nhập hoặc email" 
+                <Input
+                  type="text"
+                  id="username_or_email"
+                  name="username_or_email"
+                  placeholder="Nhập tên đăng nhập hoặc email"
                 />
                 <ErrorMessage name="username_or_email" component={ErrorText} />
               </FormGroup>
@@ -295,17 +296,16 @@ const Login = () => {
         <OrDivider>
           <span>Hoặc đăng nhập với</span>
         </OrDivider>
-        
+
         <div style={{ display: 'flex', gap: '10px', marginBottom: '5px' }}>
           <GoogleButton onClick={handleGoogleLogin}>
             <FaGoogle /> Google
           </GoogleButton>
-          
           <FacebookButton onClick={handleFacebookLogin}>
             <FaFacebook /> Facebook
           </FacebookButton>
         </div>
-        
+
         <SignupPrompt>
           Chưa có tài khoản?
           <Link to="/register">Đăng ký</Link>

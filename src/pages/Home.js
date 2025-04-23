@@ -6,6 +6,7 @@ import MainLayout from '../layouts/MainLayout';
 import Button from '../components/common/Button/Button';
 import ProductCard from '../components/common/ProductCard/ProductCard';
 import productService from '../services/productService';
+import { Link } from 'react-router-dom';
 
 const Banner = styled.div`
   position: relative;
@@ -76,94 +77,18 @@ const ProductGrid = styled.div`
   gap: 30px;
 `;
 
-const Features = styled.div`
+const CategoryGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 30px;
-  margin: 40px 0;
 `;
 
-const FeatureItem = styled.div`
-  display: flex;
-  align-items: center;
-  
-  svg {
-    font-size: 2rem;
-    color: #4CAF50;
-    margin-right: 15px;
-    flex-shrink: 0;
-  }
-  
-  div {
-    h3 {
-      margin: 0 0 8px;
-      font-size: 1.2rem;
-    }
-    
-    p {
-      margin: 0;
-      color: #666;
-    }
-  }
-`;
-
-const PromoBanner = styled.div`
-  background-color: #f9f5e8;
-  padding: 40px;
-  border-radius: 8px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  margin: 40px 0;
-  
-  div {
-    max-width: 60%;
-    
-    h3 {
-      font-size: 1.5rem;
-      margin: 0 0 15px;
-      color: #333;
-    }
-    
-    p {
-      margin: 0;
-      color: #666;
-      line-height: 1.6;
-    }
-  }
-  
-  @media (max-width: 768px) {
-    padding: 30px;
-    flex-direction: column;
-    
-    div {
-      max-width: 100%;
-      margin-bottom: 20px;
-    }
-  }
-`;
-
-const CategorySection = styled.div`
-  margin: 40px 0;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const CategoryCard = styled.div`
+const CategoryCard = styled(Link)`
   position: relative;
   height: 200px;
   border-radius: 8px;
   overflow: hidden;
+  text-decoration: none;
   
   img {
     width: 100%;
@@ -187,34 +112,60 @@ const CategoryCard = styled.div`
     
     h3 {
       margin: 0 0 5px;
+      color: white;
     }
-    
-    p {
-      margin: 0;
-      font-size: 0.9rem;
-      opacity: 0.8;
-    }
+  }
+`;
+
+const CTAButton = styled(Link)`
+  display: inline-block;
+  padding: 8px 16px;
+  background-color: #4CAF50;
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+  font-weight: 500;
+  transition: background-color 0.3s;
+  
+  &:hover {
+    background-color: #388E3C;
   }
 `;
 
 const Home = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState([]);
+  const [categoryLoading, setCategoryLoading] = useState(true);
   
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchFeaturedProducts = async () => {
       try {
         setLoading(true);
         const data = await productService.getFeaturedProducts();
+        console.log('Featured Products Response:', data);
         setFeaturedProducts(data);
       } catch (error) {
-        console.error('Failed to fetch featured products:', error);
+        console.error('Error fetching featured products:', error);
       } finally {
         setLoading(false);
       }
     };
-    
-    fetchProducts();
+
+    const fetchCategories = async () => {
+      try {
+        setCategoryLoading(true);
+        const data = await productService.getCategories();
+        setCategories(data);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      } finally {
+        setCategoryLoading(false);
+      }
+    };
+
+    fetchFeaturedProducts();
+    fetchCategories();
   }, []);
   
   return (
@@ -227,83 +178,63 @@ const Home = () => {
         </BannerContent>
       </Banner>
       
-      <Features>
-        <FeatureItem>
-          <FaTruck />
-          <div>
-            <h3>Top Seeds</h3>
-            <p>Farm-to-table to bring quality and health to your family's table every day</p>
-          </div>
-        </FeatureItem>
-        <FeatureItem>
-          <FaLeaf />
-          <div>
-            <h3>Organic Certified</h3>
-            <p>Organically grown products for a healthier, chemical-free lifestyle</p>
-          </div>
-        </FeatureItem>
-        <FeatureItem>
-          <FaShippingFast />
-          <div>
-            <h3>Fresh groceries</h3>
-            <p>Fresh groceries at your doorstep in no time, ensuring convenience</p>
-          </div>
-        </FeatureItem>
-        <FeatureItem>
-          <FaCheck />
-          <div>
-            <h3>Trusted Products</h3>
-            <p>Handpicked, high-quality items you can rely on for your family's well-being</p>
-          </div>
-        </FeatureItem>
-      </Features>
-      
-      <PromoBanner>
-        <div>
-          <h3>Giao hàng miễn phí khi bạn chi tiêu trên 200.000đ</h3>
-          <p>Đặt hàng ngay hôm nay để tận hưởng dịch vụ giao hàng miễn phí</p>
-        </div>
-        <Button variant="secondary">Mua ngay</Button>
-      </PromoBanner>
-      
       <Section>
         <SectionTitle>Sản phẩm nổi bật</SectionTitle>
         <ProductGrid>
           {loading ? (
-            <p>Loading products...</p>
+            <p>Đang tải sản phẩm...</p>
           ) : (
-            featuredProducts.map(product => (
-              <ProductCard key={product.id} product={product} />
-            ))
+            featuredProducts.map(product => {
+              // Tìm ảnh chính (primary image)
+              const primaryImage = product.images?.find(img => img.is_primary) || product.images?.[0];
+
+              console.log('Product data:', {
+                id: product.product_id,
+                name: product.name,
+                price: product.price,
+                original_price: product.original_price,
+                unit: product.unit
+              });
+
+              return (
+                <ProductCard
+                  key={product.product_id}
+                  product={{
+                    id: product.product_id,
+                    name: product.name,
+                    price: Number(product.price),
+                    original_price: Number(product.original_price),
+                    image: primaryImage?.image_url,
+                    images: product.images,
+                    unit: product.unit
+                  }}
+                />
+              );
+            })
           )}
         </ProductGrid>
       </Section>
       
       <Section>
         <SectionTitle>Danh mục sản phẩm</SectionTitle>
-        <CategorySection>
-          <CategoryCard>
-            <img src="/assets/categories/meat.jpg" alt="Meat" />
-            <div className="overlay">
-              <h3>Thịt tươi</h3>
-              <p>Giảm đến 30%</p>
-            </div>
-          </CategoryCard>
-          <CategoryCard>
-            <img src="/assets/categories/vegetables.jpg" alt="Vegetables" />
-            <div className="overlay">
-              <h3>Thực phẩm tươi mới hàng ngày</h3>
-              <p>Giảm đến 30%</p>
-            </div>
-          </CategoryCard>
-          <CategoryCard>
-            <img src="/assets/categories/fruits.jpg" alt="Fruits" />
-            <div className="overlay">
-              <h3>Trái cây đặc biệt giảm giá</h3>
-              <p>Giảm đến 30%</p>
-            </div>
-          </CategoryCard>
-        </CategorySection>
+        <CategoryGrid>
+          {categoryLoading ? (
+            <p>Đang tải danh mục...</p>
+          ) : (
+            categories.slice(0, 6).map(category => (
+              <CategoryCard key={category.category_id} to={`/categories/${category.category_id}`}>
+                <img
+                  src={category.description || '/images/categories/default.jpg'}
+                  alt={category.name}
+                />
+                <div className="overlay">
+                  <h3>{category.name}</h3>
+                  <CTAButton to={`/categories/${category.category_id}`}>Xem thêm</CTAButton>
+                </div>
+              </CategoryCard>
+            ))
+          )}
+        </CategoryGrid>
       </Section>
     </MainLayout>
   );

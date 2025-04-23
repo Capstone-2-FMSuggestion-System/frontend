@@ -230,7 +230,7 @@ const CategoryList = () => {
             {categories.map(category => (
               <CategoryCard key={category.category_id}>
                 <CategoryImageContainer>
-                  <img src={category.image_url || `/images/categories/default.jpg`} alt={category.name} />
+                  <img src={category.description || `/images/categories/default.jpg`} alt={category.name} />
                 </CategoryImageContainer>
                 <CategoryContent>
                   <CategoryName>
