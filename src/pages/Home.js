@@ -1,7 +1,7 @@
 // src/pages/Home.js
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { FaTruck, FaLeaf, FaShippingFast, FaCheck } from 'react-icons/fa';
+//import { FaTruck, FaLeaf, FaShippingFast, FaCheck } from 'react-icons/fa';
 import MainLayout from '../layouts/MainLayout';
 import Button from '../components/common/Button/Button';
 import ProductCard from '../components/common/ProductCard/ProductCard';
@@ -141,12 +141,11 @@ const Home = () => {
   useEffect(() => {
     const fetchFeaturedProducts = async () => {
       try {
-        setLoading(true);
-        const data = await productService.getFeaturedProducts();
-        console.log('Featured Products Response:', data);
-        setFeaturedProducts(data);
+        const products = await productService.getFeaturedProducts();
+        console.log('Fetched products:', products); // Kiểm tra dữ liệu trả về
+        setFeaturedProducts(products);
       } catch (error) {
-        console.error('Error fetching featured products:', error);
+        console.error('Failed to fetch featured products:', error);
       } finally {
         setLoading(false);
       }
