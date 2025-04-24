@@ -4,7 +4,7 @@ import { FaHeart, FaTrash, FaShoppingCart } from 'react-icons/fa';
 import MainLayout from '../../layouts/MainLayout';
 import Button from '../../components/common/Button/Button';
 import { AuthContext } from '../../context/AuthContext';
-import { CartContext } from '../../context/CartContext';
+import { useCart } from '../../context/CartContext';
 import productService from '../../services/productService';
 import { Link } from 'react-router-dom';
 
@@ -134,10 +134,10 @@ const EmptyWishlist = styled.div`
 
 const Wishlist = () => {
   const { currentUser } = useContext(AuthContext);
-  const { addToCart } = useContext(CartContext);
+  const { addToCart } = useCart();
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   useEffect(() => {
     const fetchWishlist = async () => {
       try {
@@ -164,7 +164,7 @@ const Wishlist = () => {
             inStock: true
           }
         ];
-        
+
         setWishlist(mockWishlist);
       } catch (error) {
         console.error('Failed to fetch wishlist:', error);
@@ -172,17 +172,17 @@ const Wishlist = () => {
         setLoading(false);
       }
     };
-    
+
     if (currentUser) {
       fetchWishlist();
     }
   }, [currentUser]);
-  
+
   const handleRemoveFromWishlist = (id) => {
     // This would normally call API
     setWishlist(wishlist.filter(item => item.id !== id));
   };
-  
+
   const handleAddToCart = (product) => {
     addToCart({
       id: product.productId,
@@ -193,12 +193,12 @@ const Wishlist = () => {
       quantity: 1
     });
   };
-  
+
   return (
     <MainLayout>
       <WishlistContainer>
         <WishlistTitle>My Wishlist</WishlistTitle>
-        
+
         <CardContainer>
           <CardHeader>
             <h2><FaHeart /> Saved Items</h2>
@@ -222,16 +222,16 @@ const Wishlist = () => {
                         )}
                       </ProductPrice>
                       <ProductActions>
-                        <Button 
-                          variant="primary" 
+                        <Button
+                          variant="primary"
                           onClick={() => handleAddToCart(item)}
                           disabled={!item.inStock}
                           fullWidth
                         >
                           <FaShoppingCart /> Add to Cart
                         </Button>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           onClick={() => handleRemoveFromWishlist(item.id)}
                         >
                           <FaTrash />

@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { FaUser, FaShoppingBag, FaSignOutAlt, FaChevronDown, FaCog } from 'react-icons/fa';
 import { AuthContext } from '../../../context/AuthContext';
+import { useToast } from '../../../context/ToastContext';
 
 const UserContainer = styled.div`
   position: relative;
@@ -121,6 +122,7 @@ const LogoutButton = styled.button`
 const UserDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { currentUser, logout } = useContext(AuthContext);
+  const { success } = useToast();
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
 
@@ -162,6 +164,11 @@ const UserDropdown = () => {
 
   const handleLogout = async () => {
     await logout();
+    success({
+      title: 'Đăng xuất thành công',
+      message: 'Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi!',
+      duration: 4000
+    });
     setIsOpen(false);
     navigate('/');
   };

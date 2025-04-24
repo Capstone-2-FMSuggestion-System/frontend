@@ -57,6 +57,7 @@ const Variant = styled.p`
   color: #666;
 `;
 
+
 const Price = styled.div`
   font-weight: 600;
   
@@ -154,54 +155,87 @@ const Subtotal = styled.div`
 
 const CartItem = ({ item }) => {
   const { updateQuantity, removeFromCart } = useContext(CartContext);
-  
+
+  // Log để debug
+  console.log('Rendering cart item:', {
+    id: item.id,
+    cart_item_id: item.cart_item_id,
+    name: item.name,
+    price: item.price,
+    quantity: item.quantity,
+    description: item.description
+  });
+
   const handleQuantityChange = (e) => {
     const value = parseInt(e.target.value);
-    if (!isNaN(value) && value > 0) {
-      updateQuantity(item.id, value);
+    if (!isNaN(value) && value >= 1 && value <= 99) {
+      const itemId = item.cart_item_id || item.id;
+      updateQuantity(itemId, value);
+    } else if (value < 1) {
+      const itemId = item.cart_item_id || item.id;
+      updateQuantity(itemId, 1);
+    } else if (value > 99) {
+      const itemId = item.cart_item_id || item.id;
+      updateQuantity(itemId, 99);
     }
   };
-  
+
   const decreaseQuantity = () => {
     if (item.quantity > 1) {
-      updateQuantity(item.id, item.quantity - 1);
+      const itemId = item.cart_item_id || item.id;
+      updateQuantity(itemId, item.quantity - 1);
     }
   };
-  
+
   const increaseQuantity = () => {
-    updateQuantity(item.id, item.quantity + 1);
+    const itemId = item.cart_item_id || item.id;
+    updateQuantity(itemId, item.quantity + 1);
   };
-  
+
   const handleRemove = () => {
-    removeFromCart(item.id);
+    const itemId = item.cart_item_id || item.id;
+    removeFromCart(itemId);
   };
-  
-  const subtotal = (item.discountPrice || item.price) * item.quantity;
-  
+
+  // Tính toán giá và tổng tiền
+  const price = item.price || 0;
+  const originalPrice = item.originalPrice || price;
+  const subtotal = price * item.quantity;
+  const unit = item.unit || 'kg';
+
+  // Format giá tiền
+  const formatPrice = (value) => {
+    if (!value && value !== 0) return '0đ';
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
+    }).format(value);
+  };
+
   return (
     <Item>
       <ImageContainer>
         <Link to={`/products/${item.id}`}>
-          <img src={item.image} alt={item.name} />
+          <img src={item.image || 'https://via.placeholder.com/100x100?text=No+Image'} alt={item.name} />
         </Link>
       </ImageContainer>
-      
+
       <Details>
         <Name>
           <Link to={`/products/${item.id}`}>{item.name}</Link>
         </Name>
-        {item.variant && <Variant>Mô tả: {item.variant}</Variant>}
+        <Variant>Đơn vị: {unit}</Variant>
         <Price>
-          {Math.round(item.discountPrice || item.price).toLocaleString()}đ/{item.unit || 'kg'}
-          {item.discountPrice && (
-            <span className="original">{Math.round(item.price).toLocaleString()}đ</span>
+          {formatPrice(price)}
+          {originalPrice > price && (
+            <span className="original">{formatPrice(originalPrice)}</span>
           )}
         </Price>
       </Details>
-      
+
       <Actions>
         <QuantitySelector>
-          <button onClick={decreaseQuantity}>
+          <button onClick={decreaseQuantity} disabled={item.quantity <= 1}>
             <FaMinus />
           </button>
           <input
@@ -214,13 +248,14 @@ const CartItem = ({ item }) => {
             <FaPlus />
           </button>
         </QuantitySelector>
-        
         <RemoveButton onClick={handleRemove}>
           <FaTrash />
         </RemoveButton>
       </Actions>
-      
-      <Subtotal>{Math.round(subtotal).toLocaleString()}đ</Subtotal>
+
+      <Subtotal>
+        {formatPrice(subtotal)}
+      </Subtotal>
     </Item>
   );
 };

@@ -5,7 +5,7 @@ import { FaCheckCircle, FaExclamationCircle, FaInfoCircle, FaTimes } from 'react
 
 const ToastContainer = styled(motion.div)`
   position: fixed;
-  bottom: 24px;
+  top: 24px;
   right: 24px;
   display: flex;
   flex-direction: column;
@@ -15,19 +15,21 @@ const ToastContainer = styled(motion.div)`
 
 const ToastItem = styled(motion.div)`
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   min-width: 300px;
   max-width: 400px;
-  padding: 12px 16px;
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   background-color: white;
+  overflow: hidden;
   
   &.success {
     border-left: 4px solid #10b981;
     .icon {
       color: #10b981;
+    }
+    .progress-bar {
+      background-color: #10b981;
     }
   }
   
@@ -36,6 +38,9 @@ const ToastItem = styled(motion.div)`
     .icon {
       color: #ef4444;
     }
+    .progress-bar {
+      background-color: #ef4444;
+    }
   }
   
   &.info {
@@ -43,10 +48,20 @@ const ToastItem = styled(motion.div)`
     .icon {
       color: #3b82f6;
     }
+    .progress-bar {
+      background-color: #3b82f6;
+    }
   }
 `;
 
 const ToastContent = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+`;
+
+const ToastMainContent = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
@@ -94,6 +109,12 @@ const CloseButton = styled.button`
   }
 `;
 
+const ProgressBar = styled(motion.div)`
+  height: 3px;
+  width: 100%;
+  background-color: #e5e7eb;
+`;
+
 const Toast = ({ toasts, removeToast }) => {
   return (
     <ToastContainer>
@@ -102,25 +123,36 @@ const Toast = ({ toasts, removeToast }) => {
           <ToastItem
             key={toast.id}
             className={toast.type}
-            initial={{ opacity: 0, x: 100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 100 }}
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
             transition={{ type: 'spring', stiffness: 500, damping: 30 }}
           >
             <ToastContent>
-              <IconContainer className="icon">
-                {toast.type === 'success' && <FaCheckCircle />}
-                {toast.type === 'error' && <FaExclamationCircle />}
-                {toast.type === 'info' && <FaInfoCircle />}
-              </IconContainer>
-              <TextContainer>
-                <Title>{toast.title}</Title>
-                {toast.message && <Message>{toast.message}</Message>}
-              </TextContainer>
+              <ToastMainContent>
+                <IconContainer className="icon">
+                  {toast.type === 'success' && <FaCheckCircle />}
+                  {toast.type === 'error' && <FaExclamationCircle />}
+                  {toast.type === 'info' && <FaInfoCircle />}
+                </IconContainer>
+                <TextContainer>
+                  <Title>{toast.title}</Title>
+                  {toast.message && <Message>{toast.message}</Message>}
+                </TextContainer>
+              </ToastMainContent>
+              <CloseButton onClick={() => removeToast(toast.id)}>
+                <FaTimes />
+              </CloseButton>
             </ToastContent>
-            <CloseButton onClick={() => removeToast(toast.id)}>
-              <FaTimes />
-            </CloseButton>
+            <ProgressBar className="progress-bar">
+              <motion.div
+                className="progress"
+                initial={{ width: "100%" }}
+                animate={{ width: "0%" }}
+                transition={{ duration: 4, ease: "linear" }}
+                onAnimationComplete={() => removeToast(toast.id)}
+              />
+            </ProgressBar>
           </ToastItem>
         ))}
       </AnimatePresence>

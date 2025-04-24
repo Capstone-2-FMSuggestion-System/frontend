@@ -270,12 +270,12 @@ const Home = () => {
 
         // Fetch featured products
         const productsData = await getFeaturedProducts();
-        console.log('Featured products:', productsData); // Log để kiểm tra dữ liệu
+        console.log('Featured products raw data:', JSON.stringify(productsData, null, 2));
         setFeaturedProducts(productsData);
 
         // Fetch categories
         const categoriesData = await getAllCategories();
-        console.log('Categories data:', categoriesData);
+        console.log('Categories raw data:', JSON.stringify(categoriesData, null, 2));
         setCategories(categoriesData);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -330,9 +330,33 @@ const Home = () => {
           {loading ? (
             <p>Đang tải sản phẩm...</p>
           ) : (
-            featuredProducts.map(product => (
-              <ProductCard key={product.id} product={product} />
-            ))
+            featuredProducts.map(product => {
+              // Tìm ảnh chính (primary image)
+              const primaryImage = product.images?.find(img => img.is_primary) || product.images?.[0];
+
+              console.log('Product data:', {
+                id: product.product_id,
+                name: product.name,
+                price: product.price,
+                original_price: product.original_price,
+                unit: product.unit
+              });
+
+              return (
+                <ProductCard
+                  key={product.product_id}
+                  product={{
+                    id: product.product_id,
+                    name: product.name,
+                    price: Number(product.price), // Chuyển đổi sang số
+                    original_price: Number(product.original_price), // Chuyển đổi sang số
+                    image: primaryImage?.image_url,
+                    images: product.images,
+                    unit: product.unit
+                  }}
+                />
+              );
+            })
           )}
         </ProductsGrid>
       </ProductsSection>
@@ -343,16 +367,15 @@ const Home = () => {
           {categoryLoading ? (
             <p>Đang tải danh mục...</p>
           ) : (
-            categories.map(category => (
-              <CategoryCard key={category.id} to={`/category/${category.id}`}>
+            categories.slice(0, 6).map(category => (
+              <CategoryCard key={category.category_id} to={`/categories/${category.category_id}`}>
                 <img
                   src={category.description || '/images/categories/default.jpg'}
                   alt={category.name}
                 />
                 <div className="overlay">
                   <h3>{category.name}</h3>
-                  {/* <p>{category.description || 'Khám phá các sản phẩm chất lượng'}</p> */}
-                  <CTAButton to={`/category/${category.id}`}>Xem thêm </CTAButton>
+                  <CTAButton to={`/categories/${category.category_id}`}>Xem thêm </CTAButton>
                 </div>
               </CategoryCard>
             ))

@@ -3,7 +3,7 @@ import React, { useContext, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { FaStar, FaShoppingCart, FaHeart, FaEye } from 'react-icons/fa';
-import { CartContext } from '../../../context/CartContext';
+import { useCart } from '../../../context/CartContext';
 
 const Card = styled.div`
   border: 1px solid #eee;
@@ -195,36 +195,36 @@ const AddToCartButton = styled.button`
 `;
 
 const CategoryProductItem = ({ product }) => {
-  const { addToCart } = useContext(CartContext);
   const [inWishlist, setInWishlist] = useState(false);
-  
+  const { addToCart } = useCart();
+
   useEffect(() => {
     console.log('ProductID trong CategoryProductItem:', product?.id);
     console.log('Sản phẩm đầy đủ:', product);
   }, [product]);
-  
+
   const handleAddToCart = () => {
     addToCart(product, 1);
   };
-  
+
   const toggleWishlist = () => {
     setInWishlist(!inWishlist);
     // Here you would typically call an API to update the user's wishlist
   };
-  
+
   // Tính toán giá và phần trăm giảm giá tương tự như trong ProductDetail.js
   const hasOriginalPrice = product.originalPrice || product.original_price;
   const hasDiscountPrice = product.discountPrice || product.price;
   const originalPriceValue = product.originalPrice || product.original_price || 0;
   const displayPrice = product.discountPrice || product.price || 0;
-  
+
   // Kiểm tra và tính toán phần trăm giảm giá
-  const hasDiscount = product.hasDiscount !== undefined ? product.hasDiscount : 
-                    (hasOriginalPrice && hasDiscountPrice && originalPriceValue > displayPrice);
-  const discountPercentage = hasDiscount 
-  ? Math.round(((originalPriceValue - hasDiscountPrice) / originalPriceValue) * 100) 
-  : 0;
-  
+  const hasDiscount = product.hasDiscount !== undefined ? product.hasDiscount :
+    (hasOriginalPrice && hasDiscountPrice && originalPriceValue > displayPrice);
+  const discountPercentage = hasDiscount
+    ? Math.round(((originalPriceValue - hasDiscountPrice) / originalPriceValue) * 100)
+    : 0;
+
   console.log('CategoryProductItem: Thông tin giảm giá:', {
     hasOriginalPrice,
     hasDiscountPrice,
@@ -235,35 +235,35 @@ const CategoryProductItem = ({ product }) => {
   });
 
   const productId = product?.id || 'undefined-id';
-  
+
   return (
     <Card>
       <ImageContainer className="image-container">
         <Link to={`/products/${product.id}`}>
-          <img 
-            src={product.image} 
-            alt={product.name} 
+          <img
+            src={product.image}
+            alt={product.name}
           />
         </Link>
         {hasDiscount && discountPercentage > 0 && (
           <DiscountBadge>{discountPercentage}% GIẢM</DiscountBadge>
         )}
         <QuickActions className="quick-actions">
-          <WishlistButton 
+          <WishlistButton
             active={inWishlist ? 1 : 0}
             onClick={toggleWishlist}
             title={inWishlist ? "Xóa khỏi danh sách yêu thích" : "Thêm vào danh sách yêu thích"}
           >
             <FaHeart />
           </WishlistButton>
-          <ActionButton 
+          <ActionButton
             onClick={handleAddToCart}
             title="Thêm vào giỏ hàng"
           >
             <FaShoppingCart />
           </ActionButton>
-          <ActionButton 
-            as={Link} 
+          <ActionButton
+            as={Link}
             to={`/products/${product.id}`}
             title="Xem chi tiết"
           >
@@ -271,26 +271,26 @@ const CategoryProductItem = ({ product }) => {
           </ActionButton>
         </QuickActions>
       </ImageContainer>
-      
+
       <Content>
         <Title>
           <Link to={`/products/${product.id}`}>{product.name}</Link>
         </Title>
-        
+
         <Rating>
           {[...Array(5)].map((_, i) => (
             <FaStar key={i} color={i < Math.floor(product.rating) ? "#FFD700" : "#e4e5e9"} />
           ))}
           <span>({product.reviewCount})</span>
         </Rating>
-        
+
         <Price>
           <span className="current">{Math.round(displayPrice).toLocaleString()}đ/{product.unit || 'kg'}</span>
           {hasDiscount && discountPercentage > 0 && (
             <span className="original">{Math.round(originalPriceValue).toLocaleString()}đ</span>
           )}
         </Price>
-        
+
         <AddToCartButton onClick={handleAddToCart}>
           <FaShoppingCart /> Thêm vào giỏ hàng
         </AddToCartButton>

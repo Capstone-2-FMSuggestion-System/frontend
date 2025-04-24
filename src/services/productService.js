@@ -54,24 +54,48 @@ const productService = {
         ...params
       };
 
-      console.log(`Fetching products for category ${categoryId} with params:`, apiParams);
+      console.log('===== FETCHING CATEGORY PRODUCTS =====');
+      console.log('Category ID:', categoryId);
+      console.log('API Params:', apiParams);
 
       const response = await api.get(`/api/e-commerce/categories/${categoryId}/products`, { params: apiParams });
-      console.log('Sản phẩm theo danh mục:', response.data);
 
-      // Trả về dữ liệu nguyên bản từ API, không qua xử lý formatProductData
+      console.log('Raw API Response:', response.data);
+
+      // Kiểm tra cấu trúc dữ liệu sản phẩm
+      if (response.data.products && response.data.products.length > 0) {
+        console.log('First Product Sample:', {
+          id: response.data.products[0].product_id || response.data.products[0].id,
+          name: response.data.products[0].name,
+          price: response.data.products[0].price,
+          original_price: response.data.products[0].original_price,
+          discount_percent: response.data.products[0].discount_percent,
+          images: response.data.products[0].images,
+          in_stock: response.data.products[0].in_stock
+        });
+      }
+
+      // Trả về dữ liệu nguyên bản từ API
       const result = {
-        products: response.data.products, // Trả về trực tiếp, không map qua formatProductData
+        products: response.data.products,
         pagination: response.data.pagination,
         category: response.data.category
       };
 
-      console.log(`Retrieved ${result.products.length} products for category ${categoryId} (page ${result.pagination.current_page}/${result.pagination.total_pages})`);
+      console.log('Processed Result:', {
+        productCount: result.products.length,
+        pagination: result.pagination,
+        category: result.category
+      });
+      console.log('===== END CATEGORY PRODUCTS =====');
 
       return result;
     } catch (error) {
-      console.error(`Error fetching products for category ${categoryId}:`, error);
-      // Trả về đối tượng có cấu trúc tương tự kết quả thành công nhưng rỗng
+      console.error('===== ERROR FETCHING CATEGORY PRODUCTS =====');
+      console.error('Category ID:', categoryId);
+      console.error('Error:', error);
+      console.error('===== END ERROR =====');
+
       return {
         products: [],
         pagination: {

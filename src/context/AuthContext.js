@@ -1,6 +1,7 @@
 // src/context/AuthContext.js
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import authService from '../services/authService';
+import { CartContext } from './CartContext';
 
 export const AuthContext = createContext();
 
@@ -16,7 +17,7 @@ export const AuthProvider = ({ children }) => {
         // Sử dụng tokenUtils.getTokens() để lấy token từ cookie
         const { accessToken, tokenExpiry } = authService.tokenUtils.getTokens();
         console.log('Token found in cookies:', !!accessToken);
-        
+
         if (accessToken) {
           // Kiểm tra token có hợp lệ không
           if (!authService.tokenUtils.validateToken(accessToken)) {
@@ -25,7 +26,7 @@ export const AuthProvider = ({ children }) => {
             setLoading(false);
             return;
           }
-          
+
           // Kiểm tra token có hết hạn không
           if (authService.tokenUtils.isTokenExpired(tokenExpiry)) {
             console.log('Token expired, attempting to refresh');
@@ -41,12 +42,24 @@ export const AuthProvider = ({ children }) => {
             setLoading(false);
             return;
           }
-          
+
           // Lấy thông tin user từ API
           const user = await authService.getCurrentUser();
           if (user) {
             setCurrentUser(user);
             console.log('Restored user session:', user);
+
+            // Tải giỏ hàng của người dùng từ server
+            try {
+              const userCart = await authService.getUserCart();
+              if (userCart && userCart.items && userCart.items.length > 0) {
+                // Lưu giỏ hàng của người dùng vào localStorage
+                localStorage.setItem('cart', JSON.stringify(userCart));
+                console.log('User cart loaded from server:', userCart);
+              }
+            } catch (cartError) {
+              console.error('Failed to load user cart:', cartError);
+            }
           } else {
             // Nếu không lấy được thông tin user, thử giải mã token để lấy thông tin cơ bản
             try {
@@ -81,18 +94,21 @@ export const AuthProvider = ({ children }) => {
 
     initAuth();
   }, []);
-  
+
   // Thêm console.log để debug quá trình đăng nhập
 
   const login = async (username_or_email, password) => {
     setError(null);
     try {
+      // Lưu giỏ hàng của khách trước khi đăng nhập
+      const guestCart = JSON.parse(localStorage.getItem('cart') || '{"items": [], "totalAmount": 0}');
+
       // Đăng nhập ban đầu để lấy thông tin cơ bản
       const basicUser = await authService.login(username_or_email, password);
-      
+
       // Cập nhật thông tin user cơ bản ngay lập tức để người dùng được chuyển hướng 
       setCurrentUser(basicUser);
-      
+
       // Sau đó, lấy thêm thông tin chi tiết từ API /api/auth/me và cập nhật lại state
       // một cách bất đồng bộ để không làm chậm trải nghiệm người dùng
       setTimeout(async () => {
@@ -101,17 +117,44 @@ export const AuthProvider = ({ children }) => {
           if (detailedUser) {
             console.log('Updating user with detailed info from /api/auth/me');
             setCurrentUser(detailedUser);
+
+            // Tải giỏ hàng của người dùng từ server
+            try {
+              const userCart = await authService.getUserCart();
+
+              // Nếu có giỏ hàng của user trên server
+              if (userCart.items && userCart.items.length > 0) {
+                // Sử dụng giỏ hàng của user
+                localStorage.setItem('cart', JSON.stringify(userCart));
+                console.log('Loaded user cart from server:', userCart);
+              }
+              // Nếu không có giỏ hàng của user trên server nhưng có giỏ hàng của khách
+              else if (guestCart.items && guestCart.items.length > 0) {
+                // Đồng bộ giỏ hàng của khách lên server
+                await authService.syncCart(guestCart.items);
+                console.log('Synced guest cart to user account:', guestCart);
+
+                // Tải lại giỏ hàng từ server sau khi đồng bộ
+                const updatedCart = await authService.getUserCart();
+                localStorage.setItem('cart', JSON.stringify(updatedCart));
+                console.log('Loaded updated cart from server:', updatedCart);
+              } else {
+                // Nếu không có giỏ hàng nào, tạo giỏ hàng mới trống
+                localStorage.setItem('cart', JSON.stringify({ items: [], totalAmount: 0 }));
+                console.log('Created new empty cart for user');
+              }
+            } catch (cartError) {
+              console.error('Failed to load user cart:', cartError);
+              // Nếu không thể tải giỏ hàng, tạo giỏ hàng mới
+              localStorage.setItem('cart', JSON.stringify({ items: [], totalAmount: 0 }));
+            }
           }
         } catch (error) {
           console.error('Failed to get detailed user info:', error);
-          // Không hiển thị lỗi này cho người dùng vì họ đã đăng nhập thành công
         }
       }, 0);
-      
-      return basicUser;
     } catch (error) {
       setError(error.message || 'Login failed');
-      // Đảm bảo lỗi được truyền đầy đủ với thông tin response
       throw error;
     }
   };
@@ -129,8 +172,21 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
+      // Đăng xuất
       await authService.logout();
       setCurrentUser(null);
+
+      // Xóa giỏ hàng khỏi localStorage và đặt lại thành trống
+      localStorage.setItem('cart', JSON.stringify({
+        items: [],
+        totalAmount: 0,
+        shippingFee: 0,
+        tax: 0,
+        discount: 0,
+        notes: '',
+        savedForLater: []
+      }));
+      console.log('User logged out, cart reset to empty');
     } catch (error) {
       console.error('Logout failed:', error);
     }
@@ -173,7 +229,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const formData = new FormData();
       formData.append('file', avatarFile);
-      
+
       const result = await authService.updateAvatar(formData);
       if (result && result.avatar_url) {
         // Cập nhật thông tin user trong context để cập nhật UI toàn ứng dụng

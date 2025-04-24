@@ -182,9 +182,10 @@ const adminService = {
    * @param {number} categoryId - Lọc theo danh mục
    * @param {string} search - Từ khóa tìm kiếm
    * @param {string} stockStatus - Lọc theo trạng thái hàng (available/unavailable)
+   * @param {Object} sort - Tham số sắp xếp {field, order}
    * @returns {Promise<Object>} - Danh sách sản phẩm và tổng số lượng
    */
-  getProducts: async (skip = 0, limit = 10, categoryId = null, search = null, stockStatus = null) => {
+  getProducts: async (skip = 0, limit = 10, categoryId = null, search = null, stockStatus = null, sort = null) => {
     try {
       // Build query params
       let params = new URLSearchParams();
@@ -195,7 +196,38 @@ const adminService = {
       if (search) params.append('search', search);
       if (stockStatus) params.append('stock_status', stockStatus);
 
-      const response = await api.get(`/api/admin/manage/products?${params.toString()}`);
+      // Add sorting parameters if provided
+      if (sort) {
+        // Map sort fields to API fields
+        const sortFieldMap = {
+          'created_at': 'created_at',
+          'name': 'name',
+          'price': 'price'
+        };
+
+        // Tìm vị trí của dấu gạch dưới cuối cùng để split field và order
+        const lastUnderscoreIndex = sort.lastIndexOf('_');
+        const field = sort.substring(0, lastUnderscoreIndex);
+        const order = sort.substring(lastUnderscoreIndex + 1);
+
+        const apiField = sortFieldMap[field] || field;
+
+        console.log('Sorting parameters:', { field: apiField, order });
+        params.append('sort_field', apiField);
+        params.append('sort_order', order);
+      }
+
+      const url = `/api/admin/manage/products?${params.toString()}`;
+      console.log('Request URL:', url);
+
+      const response = await api.get(url);
+      console.log('Response data:', response.data);
+
+      // Log thêm thông tin về categoryId nếu có
+      if (categoryId) {
+        console.log('Filtering by category ID:', categoryId);
+      }
+
       return response.data;
     } catch (error) {
       console.error('Lỗi khi lấy danh sách sản phẩm:', error);
@@ -210,72 +242,11 @@ const adminService = {
    */
   getProductById: async (productId) => {
     try {
-      // Thử lấy thông tin chi tiết sản phẩm qua API admin
-      try {
-        console.log(`Đang lấy thông tin sản phẩm ID ${productId} từ API admin`);
-        const response = await api.get(`/api/admin/manage/products/${productId}`);
-
-        // Đảm bảo dữ liệu hình ảnh đúng định dạng
-        const productData = response.data;
-        if (productData.images) {
-          console.log(`Sản phẩm ID ${productId} có ${productData.images.length} hình ảnh`);
-          // Chắc chắn rằng mỗi hình ảnh có các thuộc tính cần thiết
-          productData.images = productData.images.map(img => {
-            if (typeof img === 'string') {
-              return { image_url: img, is_primary: true, image_id: 'img_' + Date.now() };
-            }
-            return img;
-          });
-        }
-
-        return productData;
-      } catch (adminError) {
-        console.warn(`Admin API không trả về dữ liệu sản phẩm ID ${productId}, thử dùng API public`, adminError);
-
-        // Nếu API admin không hoạt động (ví dụ: vấn đề xác thực), thử dùng API public
-        try {
-          const response = await api.get(`/api/e-commerce/products/${productId}`);
-
-          // Đảm bảo dữ liệu hình ảnh đúng định dạng
-          const productData = response.data;
-          if (productData.images) {
-            console.log(`Sản phẩm ID ${productId} có ${productData.images.length} hình ảnh (API public)`);
-            // Chắc chắn rằng mỗi hình ảnh có các thuộc tính cần thiết
-            productData.images = productData.images.map(img => {
-              if (typeof img === 'string') {
-                return { image_url: img, is_primary: true, image_id: 'img_' + Date.now() };
-              }
-              return img;
-            });
-          }
-
-          return productData;
-        } catch (publicError) {
-          console.error(`Cả API admin và public đều không lấy được sản phẩm ID ${productId}`, publicError);
-
-          // Nếu tất cả các API đều thất bại, tạo dữ liệu mẫu
-          console.warn(`Generating mock data for product ID ${productId}`);
-          return {
-            product_id: parseInt(productId),
-            name: `Sản phẩm mẫu #${productId}`,
-            description: 'Mô tả sản phẩm mẫu',
-            price: 150000,
-            original_price: 180000,
-            unit: 'kg',
-            stock_quantity: 50,
-            is_featured: false,
-            category_id: 1,
-            category_name: 'Danh mục mẫu',
-            created_at: new Date().toISOString(),
-            images: [
-              { image_id: 'mock_img_1', image_url: 'https://via.placeholder.com/300', is_primary: true }
-            ]
-          };
-        }
-      }
+      const response = await api.get(`/api/admin/manage/products/${productId}`);
+      return response.data;
     } catch (error) {
       console.error(`Lỗi khi lấy thông tin sản phẩm ID ${productId}:`, error);
-      throw new Error(error.response?.data?.detail || 'Không thể lấy thông tin sản phẩm');
+      throw error;
     }
   },
 
@@ -286,18 +257,15 @@ const adminService = {
    */
   addProduct: async (productData) => {
     try {
-      // Log dữ liệu trước khi gửi
-      console.log('Product data before sending:', {
-        name: productData.get('name'),
-        description: productData.get('description'),
-        price: productData.get('price'),
-        original_price: productData.get('original_price'),
-        stock_quantity: productData.get('stock_quantity'),
-        is_featured: productData.get('is_featured'),
-        category_id: productData.get('category_id'),
-        unit: productData.get('unit'),
-        files: productData.getAll('files')
-      });
+      // Log the FormData contents for debugging
+      console.log('Sending FormData to server:');
+      for (let pair of productData.entries()) {
+        if (pair[0] === 'files') {
+          console.log('File:', pair[1].name, 'Type:', pair[1].type);
+        } else {
+          console.log(pair[0] + ':', pair[1]);
+        }
+      }
 
       const response = await api.post('/api/admin/manage/products', productData, {
         headers: {
@@ -305,22 +273,14 @@ const adminService = {
         }
       });
 
+      console.log('Server response:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Lỗi khi thêm sản phẩm:', error);
+      console.error('Error in addProduct:', error);
       if (error.response) {
-        console.error('Error response:', error.response.data);
-        // Xử lý lỗi validation
-        if (error.response.status === 422) {
-          const errorDetails = error.response.data.detail;
-          const errorMessage = Array.isArray(errorDetails)
-            ? errorDetails.map(err => err.msg).join(', ')
-            : errorDetails;
-          throw new Error(errorMessage);
-        }
-        throw new Error(error.response.data.detail || 'Có lỗi xảy ra khi thêm sản phẩm');
+        console.error('Server error response:', error.response.data);
       }
-      throw new Error('Không thể kết nối đến máy chủ');
+      throw error;
     }
   },
 
@@ -332,20 +292,15 @@ const adminService = {
    */
   updateProduct: async (productId, productData) => {
     try {
-      // Log dữ liệu trước khi gửi
-      console.log('Update product data:', {
-        productId,
-        name: productData.get('name'),
-        description: productData.get('description'),
-        price: productData.get('price'),
-        original_price: productData.get('original_price'),
-        stock_quantity: productData.get('stock_quantity'),
-        is_featured: productData.get('is_featured'),
-        category_id: productData.get('category_id'),
-        unit: productData.get('unit'),
-        files: productData.getAll('files'),
-        deletedImages: productData.get('deleted_images')
-      });
+      // Log the FormData contents for debugging
+      console.log('Sending FormData to server for update:');
+      for (let pair of productData.entries()) {
+        if (pair[0] === 'files') {
+          console.log('File:', pair[1].name, 'Type:', pair[1].type);
+        } else {
+          console.log(pair[0] + ':', pair[1]);
+        }
+      }
 
       const response = await api.put(`/api/admin/manage/products/${productId}`, productData, {
         headers: {
@@ -353,21 +308,14 @@ const adminService = {
         }
       });
 
+      console.log('Server response:', response.data);
       return response.data;
     } catch (error) {
       console.error(`Lỗi khi cập nhật sản phẩm ID ${productId}:`, error);
       if (error.response) {
-        console.error('Error response:', error.response.data);
-        if (error.response.status === 422) {
-          const errorDetails = error.response.data.detail;
-          const errorMessage = Array.isArray(errorDetails)
-            ? errorDetails.map(err => err.msg).join(', ')
-            : errorDetails;
-          throw new Error(errorMessage);
-        }
-        throw new Error(error.response.data.detail || 'Có lỗi xảy ra khi cập nhật sản phẩm');
+        console.error('Server error response:', error.response.data);
       }
-      throw new Error('Không thể kết nối đến máy chủ');
+      throw error;
     }
   },
 
@@ -382,7 +330,7 @@ const adminService = {
       return response.data;
     } catch (error) {
       console.error(`Lỗi khi xóa sản phẩm ID ${productId}:`, error);
-      throw new Error(error.response?.data?.detail || 'Không thể xóa sản phẩm');
+      throw error;
     }
   },
 
@@ -398,7 +346,7 @@ const adminService = {
       return response.data;
     } catch (error) {
       console.error(`Lỗi khi thêm ảnh cho sản phẩm ID ${productId}:`, error);
-      throw new Error(error.response?.data?.detail || 'Không thể thêm ảnh cho sản phẩm');
+      throw error;
     }
   },
 
@@ -413,66 +361,29 @@ const adminService = {
       const response = await api.delete(`/api/admin/manage/products/${productId}/images/${imageId}`);
       return response.data;
     } catch (error) {
-      console.error(`Lỗi khi xóa ảnh ID ${imageId} của sản phẩm ID ${productId}:`, error);
-      throw new Error(error.response?.data?.detail || 'Không thể xóa ảnh sản phẩm');
+      console.error(`Lỗi khi xóa ảnh của sản phẩm ID ${productId}:`, error);
+      throw error;
     }
   },
 
   /**
-   * Lấy danh sách danh mục sản phẩm với phân trang
+   * Lấy danh sách danh mục với phân trang
    * @param {number} skip - Số bản ghi bỏ qua (mặc định: 0)
-   * @param {number} limit - Số bản ghi tối đa (mặc định: 10)
-   * @param {boolean} subcategories_only - Chỉ lấy các danh mục con (parent_id != null)
+   * @param {number} limit - Số bản ghi tối đa (mặc định: 100)
    * @returns {Promise<Object>} - Danh sách danh mục và thông tin phân trang
    */
-  getCategories: async (skip = 0, limit = 10, subcategories_only = true) => {
+  getCategories: async (skip = 0, limit = 100) => {
     try {
-      try {
-        const response = await api.get('/api/admin/manage/categories', {
-          params: {
-            skip,
-            limit,
-            subcategories_only
-          }
-        });
-
-        console.log('Danh mục từ API:', response.data);
-
-        // Lấy các danh mục từ dữ liệu API
-        const categories = response.data.categories || [];
-
-        // Trả về dữ liệu đã định dạng
-        return {
-          items: categories,
-          total: response.data.total,
-          skip,
-          limit
-        };
-      } catch (apiError) {
-        if (apiError.response?.status === 404) {
-          console.warn('Categories API endpoint not found, generating mock data for development');
-
-          // Return mock data for development with parent_id != null
-          const mockCategories = [
-            { category_id: 1, name: 'Rau củ', description: 'Các loại rau củ tươi ngon', level: 2, parent_id: 10, parent_name: 'Thực phẩm' },
-            { category_id: 2, name: 'Trái cây', description: 'Các loại trái cây tươi ngon', level: 2, parent_id: 10, parent_name: 'Thực phẩm' },
-            { category_id: 3, name: 'Thịt tươi', description: 'Các loại thịt tươi ngon', level: 2, parent_id: 11, parent_name: 'Đồ tươi sống' },
-            { category_id: 4, name: 'Hải sản tươi', description: 'Các loại hải sản tươi ngon', level: 2, parent_id: 11, parent_name: 'Đồ tươi sống' },
-            { category_id: 5, name: 'Thực phẩm đông lạnh', description: 'Các loại thực phẩm đông lạnh', level: 2, parent_id: 12, parent_name: 'Đông lạnh' }
-          ];
-
-          return {
-            items: mockCategories,
-            total: mockCategories.length,
-            skip,
-            limit
-          };
-        }
-        throw apiError;
-      }
+      console.log('Fetching categories...');
+      const response = await api.get(`/api/admin/manage/categories?skip=${skip}&limit=${limit}`);
+      console.log('Categories response:', response.data);
+      return response.data;
     } catch (error) {
       console.error('Lỗi khi lấy danh sách danh mục:', error);
-      throw new Error(error.response?.data?.detail || 'Không thể lấy danh sách danh mục');
+      if (error.response) {
+        console.error('Error response:', error.response.data);
+      }
+      throw error;
     }
   }
 };

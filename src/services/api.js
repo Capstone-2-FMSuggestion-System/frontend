@@ -17,7 +17,7 @@ api.interceptors.request.use(
   (config) => {
     // Lấy token từ Cookies thay vì từ localStorage
     const token = Cookies.get(TOKEN_STORAGE.ACCESS_TOKEN);
-    
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
       // Thêm log để debug khi gọi API admin
@@ -30,13 +30,20 @@ api.interceptors.request.use(
         console.log('Admin API call WITHOUT token!');
       }
     }
-    
+
     // Log request params khi gọi API lấy sản phẩm
     if (config.url.includes('/api/e-commerce/products')) {
       console.log('API Request URL:', config.url);
       console.log('API Request Params:', config.params);
     }
-    
+
+    // Log request khi gọi API cart
+    if (config.url.includes('/api/users/cart')) {
+      console.log('Cart API Request URL:', config.url);
+      console.log('Cart API Request Data:', config.data);
+      console.log('Cart API Request Headers:', config.headers);
+    }
+
     return config;
   },
   (error) => {
@@ -51,7 +58,7 @@ api.interceptors.response.use(
     if (response.config.url.includes('/api/e-commerce/products')) {
       console.log('===== API RESPONSE DATA =====');
       console.log('API URL:', response.config.url);
-      
+
       // Log số lượng kết quả hoặc chi tiết một sản phẩm
       if (Array.isArray(response.data)) {
         console.log('API Response Data Length:', response.data.length);
@@ -68,6 +75,14 @@ api.interceptors.response.use(
       }
       console.log('===== END API RESPONSE =====');
     }
+
+    // Log response khi gọi API cart
+    if (response.config.url.includes('/api/users/cart')) {
+      console.log('===== CART API RESPONSE =====');
+      console.log('Cart API URL:', response.config.url);
+      console.log('Cart API Response:', JSON.stringify(response.data));
+      console.log('===== END CART API RESPONSE =====');
+    }
     return response;
   },
   (error) => {
@@ -78,14 +93,14 @@ api.interceptors.response.use(
         // Xóa token khỏi cả localStorage và cookie để đảm bảo đồng bộ
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        
+
         // Xóa token khỏi cookies
         Cookies.remove(TOKEN_STORAGE.ACCESS_TOKEN, { path: '/' });
         Cookies.remove(TOKEN_STORAGE.REFRESH_TOKEN, { path: '/' });
         Cookies.remove(TOKEN_STORAGE.TOKEN_EXPIRY, { path: '/' });
-        
+
         console.log('Unauthorized error: Removed tokens from both localStorage and cookies');
-        
+
         // Redirect to login page if needed
         // window.location.href = '/login';
       }

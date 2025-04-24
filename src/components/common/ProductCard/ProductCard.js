@@ -1,9 +1,9 @@
 // src/components/common/ProductCard/ProductCard.js
-import React, { useContext } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { FaStar, FaShoppingCart } from 'react-icons/fa';
-import { CartContext } from '../../../context/CartContext';
+import { FaStar, FaShoppingCart, FaFire, FaCrown } from 'react-icons/fa';
+import { useCart } from '../../../context/CartContext';
 
 const Card = styled.div`
   border: 1px solid #eee;
@@ -11,9 +11,27 @@ const Card = styled.div`
   overflow: hidden;
   transition: all 0.3s ease;
   background: white;
+  position: relative;
+  ${props => props.isFeatured && `
+    border: 2px solid #FF6B6B;
+    box-shadow: 0 0 20px rgba(255, 107, 107, 0.2);
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #FF6B6B, #FF8E8E);
+    }
+  `}
   &:hover {
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
     transform: translateY(-5px);
+    ${props => props.isFeatured && `
+      box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+      transform: translateY(-8px);
+    `}
   }
 `;
 
@@ -22,6 +40,18 @@ const ImageContainer = styled.div`
   overflow: hidden;
   height: 200px;
   background: #f5f5f5;
+  ${props => props.isFeatured && `
+    height: 220px;
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 100%);
+    }
+  `}
   
   img {
     width: 100%;
@@ -44,20 +74,56 @@ const ImageContainer = styled.div`
   }
 `;
 
-const DiscountBadge = styled.div`
+const HotBadge = styled.div`
   position: absolute;
   top: 10px;
   left: 10px;
-  background-color: #FF8C00;
+  background: linear-gradient(45deg, #FF6B6B, #FF8E8E);
   color: white;
   padding: 5px 10px;
   border-radius: 4px;
   font-size: 12px;
   font-weight: bold;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+`;
+
+const FeaturedBadge = styled.div`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: linear-gradient(45deg, #FFD700, #FFA500);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+`;
+
+const DiscountBadge = styled.div`
+  position: absolute;
+  top: 45px;
+  left: 10px;
+  background: linear-gradient(45deg, #4CAF50, #8BC34A);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 `;
 
 const Content = styled.div`
   padding: 15px;
+  ${props => props.isFeatured && `
+    background: linear-gradient(to bottom, #fff, #fff5f5);
+  `}
 `;
 
 const Title = styled.h3`
@@ -71,6 +137,10 @@ const Title = styled.h3`
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  ${props => props.isFeatured && `
+    color: #FF6B6B;
+    font-weight: 600;
+  `}
   
   a {
     color: inherit;
@@ -141,33 +211,47 @@ const AddToCartButton = styled.button`
 `;
 
 const ProductCard = ({ product }) => {
-  const { addToCart } = useContext(CartContext);
-  
+  const { addToCart } = useCart();
+
   const handleAddToCart = () => {
+    // Kiểm tra xem product có hợp lệ không
+    if (!product || !product.id) {
+      console.error('Invalid product data:', product);
+      return;
+    }
+
+    // Log để debug
+    console.log('Adding to cart:', {
+      id: product.id,
+      name: product.name,
+      price: product.price
+    });
+
     addToCart(product, 1);
   };
-  
+
   // Hiển thị log cho debug
   console.log("ProductCard rendering for:", product.name, "with ID:", product.id);
   console.log("Image data:", { image: product.image, images: product.images });
-  
-  // Xác định giá hiển thị
-  const currentPrice = product.discountPrice ? product.discountPrice : product.originalPrice;
-  const discountPercentage = product.discountPrice 
-    ? Math.round(((product.originalPrice - product.discountPrice) / product.originalPrice) * 100) 
+
+  // Xác định giá hiển thị với kiểm tra null
+  const currentPrice = product?.price || 0;
+  const originalPrice = product?.original_price || 0;
+  const discountPercentage = originalPrice > currentPrice && originalPrice > 0
+    ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
     : 0;
-  
+
   // Lấy ảnh chính
-  const productImage = product.image || (product.images && product.images.length > 0 ? product.images[0] : 'https://via.placeholder.com/300x300?text=No+Image');
-  
+  const productImage = product?.image || (product?.images && product.images.length > 0 ? product.images[0].image_url : 'https://via.placeholder.com/300x300?text=No+Image');
+
   return (
-    <Card>
-      <ImageContainer>
-        <Link to={`/products/${product.id}`}>
+    <Card isFeatured={product?.is_featured}>
+      <ImageContainer isFeatured={product?.is_featured}>
+        <Link to={`/products/${product?.id}`}>
           {productImage ? (
-            <img 
-              src={productImage} 
-              alt={product.name}
+            <img
+              src={productImage}
+              alt={product?.name || 'Sản phẩm'}
               onError={(e) => {
                 e.target.onerror = null;
                 e.target.src = 'https://via.placeholder.com/300x300?text=Error+Loading';
@@ -177,24 +261,34 @@ const ProductCard = ({ product }) => {
             <div className="no-image">Không có hình ảnh</div>
           )}
         </Link>
+        {product?.is_featured && (
+          <>
+            <HotBadge>
+              <FaFire /> HOT
+            </HotBadge>
+            <FeaturedBadge>
+              <FaCrown /> Nổi bật
+            </FeaturedBadge>
+          </>
+        )}
         {discountPercentage > 0 && (
           <DiscountBadge>{discountPercentage}% OFF</DiscountBadge>
         )}
       </ImageContainer>
-      <Content>
-        <Title>
-          <Link to={`/products/${product.id}`}>{product.name}</Link>
+      <Content isFeatured={product?.is_featured}>
+        <Title isFeatured={product?.is_featured}>
+          <Link to={`/products/${product?.id}`}>{product?.name || 'Sản phẩm'}</Link>
         </Title>
         <Rating>
           {[...Array(5)].map((_, i) => (
-            <FaStar key={i} color={i < Math.floor(product.rating) ? "#FFD700" : "#e4e5e9"} />
+            <FaStar key={i} color={i < Math.floor(product?.rating || 0) ? "#FFD700" : "#e4e5e9"} />
           ))}
-          <span>({product.reviewCount || 0})</span>
+          <span>({product?.reviewCount || 0})</span>
         </Rating>
         <Price>
-          <span className="current">{Math.round(currentPrice).toLocaleString()}đ/{product.unit || 'kg'}</span>
-          {product.discountPrice && (
-            <span className="original">{Math.round(product.originalPrice).toLocaleString()}đ</span>
+          <span className="current">{currentPrice.toLocaleString('vi-VN')}đ/{product?.unit || 'kg'}</span>
+          {originalPrice > currentPrice && originalPrice > 0 && (
+            <span className="original">{originalPrice.toLocaleString('vi-VN')}đ</span>
           )}
         </Price>
         <AddToCartButton onClick={handleAddToCart}>

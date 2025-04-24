@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { FaTimes, FaCloudUploadAlt, FaTrash, FaStar, FaPlus } from 'react-icons/fa';
 import Button from '../common/Button/Button';
+import { toast } from 'react-hot-toast';
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -350,7 +351,7 @@ const LoadingSpinner = styled.div`
   }
 `;
 
-const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product = null, categories = [] }) => {
+const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product = null, categories = [], onSuccess }) => {
   const [formData, setFormData] = useState({
     name: '',
     category_id: '',
@@ -540,7 +541,6 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product =
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     try {
       // Validate form
       const validationErrors = validate();
@@ -549,64 +549,56 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product =
         return;
       }
 
-      setErrors({});
-      setUploadError('');
-
-      // Chuẩn bị dữ liệu sản phẩm
       const productData = new FormData();
 
-      // Thêm các trường thông tin sản phẩm
+      // Add basic product information
       productData.append('name', formData.name);
       productData.append('category_id', formData.category_id);
       productData.append('price', formData.price);
       productData.append('original_price', formData.original_price);
-      productData.append('unit', formData.unit || '');
+      productData.append('unit', formData.unit);
       productData.append('description', formData.description);
       productData.append('stock_quantity', formData.stock_quantity);
       productData.append('is_featured', formData.is_featured);
 
-      // Xử lý hình ảnh
-      if (isEditing) {
-        // Nếu đang sửa sản phẩm
-        const deletedImages = images
-          .filter(img => img.isExisting && !img.url)
-          .map(img => img.image_id);
-
-        if (deletedImages.length > 0) {
-          productData.append('deleted_images', JSON.stringify(deletedImages));
-        }
+      // Handle images
+      if (images.length > 0) {
+        images.forEach((image, index) => {
+          if (image.file) {
+            console.log('Appending image file:', image.file.name);
+            productData.append('files', image.file);
+            if (index === primaryImageIndex) {
+              productData.append('primary_image_index', index.toString());
+            }
+          }
+        });
       }
 
-      // Thêm tất cả hình ảnh mới vào FormData
-      images.forEach((image, index) => {
-        if (image.file) {
-          productData.append('files', image.file);
-        }
-      });
+      // Log the FormData contents
+      console.log('FormData contents before submission:');
+      for (let pair of productData.entries()) {
+        console.log(pair[0] + ':', pair[1]);
+      }
 
-      // Log dữ liệu trước khi gửi
-      console.log('Form data before submission:', {
-        name: formData.name,
-        category_id: formData.category_id,
-        price: formData.price,
-        original_price: formData.original_price,
-        unit: formData.unit,
-        description: formData.description,
-        stock_quantity: formData.stock_quantity,
-        is_featured: formData.is_featured,
-        imagesCount: images.length,
-        newFiles: images.filter(img => img.file).length,
-        deletedImages: isEditing ? images.filter(img => img.isExisting && !img.url).length : 0
-      });
+      const response = await onSave(productData);
+      console.log('Server response:', response);
 
-      // Gọi API để lưu sản phẩm
-      await onSave(productData);
+      toast.success(isEditing ? 'Cập nhật sản phẩm thành công' : 'Thêm sản phẩm thành công');
+
+      // Call onSuccess callback if provided to trigger data reload
+      if (typeof onSuccess === 'function') {
+        await onSuccess();
+      }
+
       onClose();
     } catch (error) {
-      console.error('Failed to save product:', error);
-      setUploadError('Lỗi khi lưu sản phẩm: ' + error.message);
-    } finally {
-      setIsUploading(false);
+      console.error('Error saving product:', error);
+      if (error.response) {
+        console.error('Error response:', error.response.data);
+        toast.error(error.response.data.message || 'Có lỗi xảy ra khi lưu sản phẩm');
+      } else {
+        toast.error('Có lỗi xảy ra khi lưu sản phẩm');
+      }
     }
   };
 

@@ -7,6 +7,7 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import AuthLayout from '../../layouts/AuthLayout';
 import Button from '../../components/common/Button/Button';
 import { AuthContext } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 
 const RegisterContainer = styled.div`
   max-width: 500px;
@@ -128,6 +129,7 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { register } = useContext(AuthContext);
+  const { success } = useToast();
   const navigate = useNavigate();
 
   const initialValues = {
@@ -166,6 +168,11 @@ const Register = () => {
   const handleSubmit = async (values, { setSubmitting, setFieldError }) => {
     try {
       await register(values.name, values.email, values.phone, values.password, values.username);
+      success({
+        title: 'Đăng ký thành công',
+        message: 'Tài khoản của bạn đã được tạo. Vui lòng đăng nhập để tiếp tục.',
+        duration: 4000
+      });
       navigate('/login');
     } catch (error) {
       setFieldError('email', 'Email đã được sử dụng.');

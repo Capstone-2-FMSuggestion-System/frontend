@@ -378,19 +378,29 @@ const ProductList = () => {
   const itemsPerPage = 10;
   const [menuPositions, setMenuPositions] = useState({});
   const actionButtonRefs = useRef({});
+  const [sortBy, setSortBy] = useState('created_at_desc');
 
   // Fetch categories for filter
   useEffect(() => {
     const fetchCategories = async () => {
       try {
+        console.log('Starting to fetch categories...');
         const response = await adminService.getCategories(0, 100);
-        setCategories(response.items || []);
+        console.log('Categories loaded:', response);
+
+        if (response && response.categories) {
+          setCategories(response.categories);
+          console.log('Categories state updated:', response.categories);
+        } else {
+          console.error('Invalid categories response format:', response);
+          toast.error('Định dạng dữ liệu danh mục không hợp lệ');
+        }
       } catch (error) {
         console.error('Lỗi khi lấy danh mục:', error);
         toast.error('Không thể tải danh mục sản phẩm');
       }
     };
-    
+
     fetchCategories();
   }, []);
 
@@ -405,7 +415,7 @@ const ProductList = () => {
         // Create filter params
         let categoryId = null;
         if (categoryFilter) categoryId = parseInt(categoryFilter);
-        
+
         // Xử lý lọc theo trạng thái
         let stockFilter = null;
         if (statusFilter === 'instock') {
@@ -414,18 +424,23 @@ const ProductList = () => {
           stockFilter = 'unavailable';
         }
 
-        // Fetch products from API
+        console.log('Fetching products with filters:', {
+          categoryId,
+          stockFilter,
+          sortBy
+        });
+
+        // Fetch products from API with sorting
         const response = await adminService.getProducts(
           skip,
           itemsPerPage,
           categoryId,
           searchTerm || null,
-          stockFilter
+          stockFilter,
+          sortBy
         );
 
-        console.log('Sản phẩm đã tải:', response.items);
-        
-        // Sử dụng dữ liệu trả về trực tiếp (đã có category_name)
+        console.log('Products loaded:', response.items);
         setProducts(response.items || []);
         setTotalItems(response.total);
         setTotalPages(Math.ceil(response.total / itemsPerPage));
@@ -439,7 +454,7 @@ const ProductList = () => {
     };
 
     fetchProducts();
-  }, [currentPage, searchTerm, categoryFilter, statusFilter, categories]);
+  }, [currentPage, searchTerm, categoryFilter, statusFilter, sortBy]);
 
   const handleAddProduct = () => {
     setEditingProduct(null);
@@ -447,6 +462,7 @@ const ProductList = () => {
   };
 
   const handleEditProduct = (product) => {
+    console.log('Editing product:', product);
     setEditingProduct(product);
     setIsModalOpen(true);
     setActionMenuOpen(null);
@@ -459,48 +475,38 @@ const ProductList = () => {
 
   const handleSaveProduct = async (productData) => {
     try {
-      let savedProduct;
-      
-      if (editingProduct) {
-        // Update existing product
-        savedProduct = await adminService.updateProduct(editingProduct.product_id, productData);
-        toast.success('Sản phẩm đã được cập nhật thành công!');
+      console.log('Saving product with data:', {
+        isEditing: !!editingProduct,
+        productId: editingProduct?.product_id,
+        formData: productData
+      });
+
+      if (editingProduct && editingProduct.product_id) {
+        await adminService.updateProduct(editingProduct.product_id, productData);
+        toast.success('Cập nhật sản phẩm thành công');
       } else {
-        // Create new product
-        savedProduct = await adminService.addProduct(productData);
-        toast.success('Sản phẩm đã được thêm thành công!');
+        await adminService.addProduct(productData);
+        toast.success('Thêm sản phẩm thành công');
       }
-      
-      // Refresh product list
+
+      handleCloseModal();
+
+      // Reload the products list
       const skip = (currentPage - 1) * itemsPerPage;
-      const categoryId = categoryFilter ? parseInt(categoryFilter) : null;
-      
-      // Xử lý lọc theo trạng thái
-      let stockFilter = null;
-      if (statusFilter === 'instock') {
-        stockFilter = 'available';
-      } else if (statusFilter === 'outofstock') {
-        stockFilter = 'unavailable';
-      }
-      
       const response = await adminService.getProducts(
         skip,
         itemsPerPage,
-        categoryId,
+        categoryFilter ? parseInt(categoryFilter) : null,
         searchTerm || null,
-        stockFilter
+        statusFilter === 'instock' ? 'available' : statusFilter === 'outofstock' ? 'unavailable' : null,
+        sortBy
       );
-      
-      // Sử dụng dữ liệu trả về trực tiếp
       setProducts(response.items || []);
       setTotalItems(response.total);
       setTotalPages(Math.ceil(response.total / itemsPerPage));
-      
-      return savedProduct;
     } catch (error) {
       console.error('Lỗi khi lưu sản phẩm:', error);
-      toast.error('Đã xảy ra lỗi khi lưu sản phẩm.');
-      throw error;
+      toast.error(error.response?.data?.message || 'Không thể lưu sản phẩm');
     }
   };
 
@@ -525,11 +531,11 @@ const ProductList = () => {
       try {
         await adminService.deleteProduct(productId);
         toast.success(`Đã xóa sản phẩm ID: ${productId}`);
-        
+
         // Refresh product list
         const skip = (currentPage - 1) * itemsPerPage;
         const categoryId = categoryFilter ? parseInt(categoryFilter) : null;
-        
+
         // Xử lý lọc theo trạng thái
         let stockFilter = null;
         if (statusFilter === 'instock') {
@@ -537,7 +543,7 @@ const ProductList = () => {
         } else if (statusFilter === 'outofstock') {
           stockFilter = 'unavailable';
         }
-        
+
         const response = await adminService.getProducts(
           skip,
           itemsPerPage,
@@ -545,7 +551,7 @@ const ProductList = () => {
           searchTerm || null,
           stockFilter
         );
-        
+
         // Sử dụng dữ liệu trả về trực tiếp
         setProducts(response.items || []);
         setTotalItems(response.total);
@@ -563,10 +569,10 @@ const ProductList = () => {
       const buttonRect = actionButtonRefs.current[productId].getBoundingClientRect();
       const windowHeight = window.innerHeight;
       const spaceBelow = windowHeight - buttonRect.bottom;
-      
+
       // Nếu khoảng trống phía dưới < 150px (chiều cao ước tính của menu), hiển thị menu phía trên
       const showAbove = spaceBelow < 150;
-      
+
       setMenuPositions(prev => ({
         ...prev,
         [productId]: showAbove
@@ -578,12 +584,12 @@ const ProductList = () => {
     if (event) {
       event.stopPropagation();
     }
-    
+
     // Kiểm tra vị trí trước khi mở menu
     setTimeout(() => {
       checkMenuPosition(productId);
     }, 0);
-    
+
     if (actionMenuOpen === productId) {
       setActionMenuOpen(null);
     } else {
@@ -596,7 +602,7 @@ const ProductList = () => {
       event.stopPropagation();
       event.preventDefault();
     }
-    
+
     if (action === 'edit') {
       handleEdit(productId);
     } else if (action === 'copy') {
@@ -604,7 +610,7 @@ const ProductList = () => {
     } else if (action === 'delete') {
       handleDelete(productId);
     }
-    
+
     setActionMenuOpen(null);
   };
 
@@ -637,17 +643,17 @@ const ProductList = () => {
     try {
       // Hiển thị thông báo đang tải
       toast.info('Đang chuẩn bị dữ liệu xuất...');
-      
+
       // Lấy tất cả sản phẩm để xuất (không phân trang)
       const response = await adminService.getProducts(
         0,
         1000, // Lấy số lượng lớn để có thể xuất tất cả
         categoryFilter ? parseInt(categoryFilter) : null,
         searchTerm || null,
-        statusFilter === 'instock' ? 'available' : 
-        statusFilter === 'outofstock' ? 'unavailable' : null
+        statusFilter === 'instock' ? 'available' :
+          statusFilter === 'outofstock' ? 'unavailable' : null
       );
-      
+
       // Tạo dữ liệu cho file Excel
       const productsData = response.items.map(product => ({
         'ID': product.product_id,
@@ -660,12 +666,12 @@ const ProductList = () => {
         'Trạng thái': product.stock_quantity > 0 ? 'Còn hàng' : 'Hết hàng',
         'Ngày tạo': new Date(product.created_at).toLocaleDateString('vi-VN')
       }));
-      
+
       // Tạo workbook
       const worksheet = XLSX.utils.json_to_sheet(productsData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Sản phẩm");
-      
+
       // Tự động điều chỉnh độ rộng cột
       const maxWidth = productsData.reduce((acc, product) => {
         Object.keys(product).forEach(key => {
@@ -674,19 +680,35 @@ const ProductList = () => {
         });
         return acc;
       }, {});
-      
+
       worksheet['!cols'] = Object.keys(maxWidth).map(key => ({ wch: maxWidth[key] + 2 }));
-      
+
       // Xuất file
       const fileName = `danh-sach-san-pham-${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(workbook, fileName);
-      
+
       toast.success('Xuất dữ liệu thành công');
     } catch (error) {
       console.error('Lỗi khi xuất dữ liệu:', error);
       toast.error('Đã xảy ra lỗi khi xuất dữ liệu');
     }
   };
+
+  const handleSortChange = (e) => {
+    const newSortBy = e.target.value;
+    console.log('Sort changed to:', newSortBy);
+    setSortBy(newSortBy);
+    setCurrentPage(1);
+  };
+
+  // Thêm useEffect để theo dõi thay đổi của categoryFilter
+  useEffect(() => {
+    if (categoryFilter) {
+      console.log('Category filter changed to:', categoryFilter);
+      // Reset về trang 1 khi thay đổi danh mục
+      setCurrentPage(1);
+    }
+  }, [categoryFilter]);
 
   return (
     <Container>
@@ -735,16 +757,33 @@ const ProductList = () => {
         <FilterDropdown
           value={categoryFilter}
           onChange={(e) => {
+            console.log('Category filter changed:', e.target.value);
             setCategoryFilter(e.target.value);
             setCurrentPage(1);
           }}
         >
           <option value="">Danh mục</option>
-          {categories.map(category => (
-            <option key={category.category_id} value={category.category_id}>
-              {category.name}
-            </option>
-          ))}
+          {categories && categories.length > 0 ? (
+            categories.map(category => (
+              <option key={category.category_id} value={category.category_id}>
+                {category.name}
+              </option>
+            ))
+          ) : (
+            <option value="" disabled>Không có danh mục</option>
+          )}
+        </FilterDropdown>
+
+        <FilterDropdown
+          value={sortBy}
+          onChange={handleSortChange}
+        >
+          <option value="created_at_desc">Mới nhất</option>
+          <option value="created_at_asc">Cũ nhất</option>
+          <option value="name_asc">Tên A-Z</option>
+          <option value="name_desc">Tên Z-A</option>
+          <option value="price_asc">Giá tăng dần</option>
+          <option value="price_desc">Giá giảm dần</option>
         </FilterDropdown>
 
         <ColumnsButton>
@@ -783,7 +822,7 @@ const ProductList = () => {
                   <td>{new Date(product.created_at).toLocaleDateString('vi-VN')}</td>
                   <td>
                     <ActionMenu className="action-menu">
-                      <ActionButton 
+                      <ActionButton
                         ref={el => actionButtonRefs.current[product.product_id] = el}
                         onClick={(e) => toggleActionMenu(product.product_id, e)}
                         title="Tùy chọn"
@@ -793,7 +832,7 @@ const ProductList = () => {
                       </ActionButton>
 
                       {actionMenuOpen === product.product_id && (
-                        <ActionMenuDropdown 
+                        <ActionMenuDropdown
                           showAbove={menuPositions[product.product_id]}
                           onClick={(e) => e.stopPropagation()}
                         >
@@ -803,8 +842,8 @@ const ProductList = () => {
                           <button onClick={(e) => handleMenuAction('copy', product.product_id, e)}>
                             Copy ID
                           </button>
-                          <button 
-                            className="delete" 
+                          <button
+                            className="delete"
                             onClick={(e) => handleMenuAction('delete', product.product_id, e)}
                           >
                             Xóa
@@ -822,44 +861,44 @@ const ProductList = () => {
             <PageInfo>
               Hiển thị <span>{Math.min(itemsPerPage, products.length)}</span> / <span>{totalItems}</span> sản phẩm | Trang <span>{currentPage}</span> / <span>{totalPages}</span>
             </PageInfo>
-            
+
             <PageControls>
-              <PageButton 
+              <PageButton
                 className="control"
-                onClick={() => handlePageChange(1)} 
+                onClick={() => handlePageChange(1)}
                 disabled={currentPage === 1}
                 title="Trang đầu"
               >
                 &laquo;
               </PageButton>
-              
-              <PageButton 
+
+              <PageButton
                 className="control"
-                onClick={() => handlePageChange(currentPage - 1)} 
+                onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
                 title="Trang trước"
               >
                 &lsaquo;
               </PageButton>
-              
+
               {/* Hiển thị nút phân trang thông minh */}
               {(() => {
                 let pageButtons = [];
                 const totalPageButtons = Math.min(5, totalPages);
-                
+
                 // Tính toán phạm vi các trang hiển thị
                 let startPage = Math.max(1, currentPage - Math.floor(totalPageButtons / 2));
                 let endPage = startPage + totalPageButtons - 1;
-                
+
                 if (endPage > totalPages) {
                   endPage = totalPages;
                   startPage = Math.max(1, endPage - totalPageButtons + 1);
                 }
-                
+
                 // Hiển thị "..." nếu không bắt đầu từ trang 1
                 if (startPage > 1) {
                   pageButtons.push(
-                    <PageButton 
+                    <PageButton
                       key="start-ellipsis"
                       onClick={() => handlePageChange(startPage - 1)}
                       title={`Trang ${startPage - 1}`}
@@ -868,11 +907,11 @@ const ProductList = () => {
                     </PageButton>
                   );
                 }
-                
+
                 // Hiển thị các nút trang
                 for (let i = startPage; i <= endPage; i++) {
                   pageButtons.push(
-                    <PageButton 
+                    <PageButton
                       key={i}
                       active={i === currentPage}
                       onClick={() => handlePageChange(i)}
@@ -882,11 +921,11 @@ const ProductList = () => {
                     </PageButton>
                   );
                 }
-                
+
                 // Hiển thị "..." nếu không kết thúc ở trang cuối
                 if (endPage < totalPages) {
                   pageButtons.push(
-                    <PageButton 
+                    <PageButton
                       key="end-ellipsis"
                       onClick={() => handlePageChange(endPage + 1)}
                       title={`Trang ${endPage + 1}`}
@@ -895,22 +934,22 @@ const ProductList = () => {
                     </PageButton>
                   );
                 }
-                
+
                 return pageButtons;
               })()}
-              
-              <PageButton 
+
+              <PageButton
                 className="control"
-                onClick={() => handlePageChange(currentPage + 1)} 
+                onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
                 title="Trang sau"
               >
                 &rsaquo;
               </PageButton>
-              
-              <PageButton 
+
+              <PageButton
                 className="control"
-                onClick={() => handlePageChange(totalPages)} 
+                onClick={() => handlePageChange(totalPages)}
                 disabled={currentPage === totalPages}
                 title="Trang cuối"
               >
@@ -921,13 +960,28 @@ const ProductList = () => {
         </>
       )}
 
-      <AddProductModal 
+      <AddProductModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         onSave={handleSaveProduct}
         isLoading={false}
         product={editingProduct}
         categories={categories}
+        onSuccess={async () => {
+          // Reload the products list after successful save
+          const skip = (currentPage - 1) * itemsPerPage;
+          const response = await adminService.getProducts(
+            skip,
+            itemsPerPage,
+            categoryFilter ? parseInt(categoryFilter) : null,
+            searchTerm || null,
+            statusFilter === 'instock' ? 'available' : statusFilter === 'outofstock' ? 'unavailable' : null,
+            sortBy
+          );
+          setProducts(response.items || []);
+          setTotalItems(response.total);
+          setTotalPages(Math.ceil(response.total / itemsPerPage));
+        }}
       />
     </Container>
   );

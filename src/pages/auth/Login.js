@@ -7,6 +7,7 @@ import { FaEye, FaEyeSlash, FaGoogle, FaFacebook } from 'react-icons/fa';
 import AuthLayout from '../../layouts/AuthLayout';
 import Button from '../../components/common/Button/Button';
 import { AuthContext } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 
 const LoginContainer = styled.div`
   max-width: 700px;
@@ -170,6 +171,7 @@ const SignupPrompt = styled.div`
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { login, loginWithGoogle, loginWithFacebook } = useContext(AuthContext);
+  const { success } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -191,6 +193,11 @@ const Login = () => {
   const handleSubmit = async (values, { setSubmitting, setFieldError }) => {
     try {
       await login(values.username_or_email, values.password);
+      success({
+        title: 'Đăng nhập thành công',
+        message: 'Chào mừng bạn quay trở lại!',
+        duration: 4000
+      });
       navigate(redirectPath, { replace: true });
     } catch (error) {
       setFieldError('password', 'Tên đăng nhập hoặc mật khẩu không chính xác');
@@ -202,6 +209,11 @@ const Login = () => {
   const handleGoogleLogin = async () => {
     try {
       await loginWithGoogle();
+      success({
+        title: 'Đăng nhập thành công',
+        message: 'Chào mừng bạn quay trở lại!',
+        duration: 4000
+      });
       navigate(redirectPath, { replace: true });
     } catch (error) {
       console.error('Google login failed:', error);
@@ -211,6 +223,11 @@ const Login = () => {
   const handleFacebookLogin = async () => {
     try {
       await loginWithFacebook();
+      success({
+        title: 'Đăng nhập thành công',
+        message: 'Chào mừng bạn quay trở lại!',
+        duration: 4000
+      });
       navigate(redirectPath, { replace: true });
     } catch (error) {
       console.error('Facebook login failed:', error);

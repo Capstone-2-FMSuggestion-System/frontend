@@ -15,26 +15,26 @@ export const ToastProvider = ({ children }) => {
       message: toast.message || '',
       duration: toast.duration || 3000,
     };
-    
+
     setToasts((prevToasts) => [...prevToasts, newToast]);
-    
+
     if (newToast.duration) {
       setTimeout(() => {
         removeToast(id);
       }, newToast.duration);
     }
-    
+
     return id;
   }, []);
-  
+
   const removeToast = useCallback((id) => {
     setToasts((prevToasts) => prevToasts.filter(toast => toast.id !== id));
   }, []);
-  
+
   const clearToasts = useCallback(() => {
     setToasts([]);
   }, []);
-  
+
   return (
     <ToastContext.Provider value={{ addToast, removeToast, clearToasts }}>
       {children}
@@ -45,11 +45,11 @@ export const ToastProvider = ({ children }) => {
 
 export const useToast = () => {
   const context = useContext(ToastContext);
-  
+
   if (!context) {
     throw new Error('useToast must be used within a ToastProvider');
   }
-  
+
   return {
     ...context,
     success: (toast) => context.addToast({ ...toast, type: 'success' }),

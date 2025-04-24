@@ -183,12 +183,15 @@ const getRootCategoryId = (pathname) => {
   // '/categories/X', '/categories/X/...', '/products/X', etc.
   const categoryMatches = pathname.match(/\/categories\/(\d+)/);
   if (categoryMatches && categoryMatches[1]) {
-    console.log('CategoryProducts: Found rootCategoryId in URL:', categoryMatches[1]);
-    return categoryMatches[1];
+    const categoryId = parseInt(categoryMatches[1]);
+    if (!isNaN(categoryId)) {
+      console.log('CategoryProducts: Found valid rootCategoryId in URL:', categoryId);
+      return categoryId;
+    }
   }
-  
-  // Không tìm thấy ID trong URL
-  console.log('CategoryProducts: No rootCategoryId found in URL');
+
+  // Không tìm thấy ID hợp lệ trong URL
+  console.log('CategoryProducts: No valid rootCategoryId found in URL');
   return null;
 };
 
@@ -208,30 +211,30 @@ const CategoryProducts = () => {
     minPrice: undefined,
     maxPrice: undefined
   });
-  
+
   // Refs để theo dõi trạng thái
   const prevIdRef = useRef(id);
   const hasFetchedRef = useRef(false);
   const isProcessingRef = useRef(false);
   const processingCategoryInfoRef = useRef(false);
-  
+
   // Ref để lưu trữ lỗi MCP
   const mcpErrorsRef = useRef([]);
-  
+
   // Sử dụng CategoryContext
-  const { 
-    fetchSubcategories, 
-    clearSubcategoriesCache, 
-    setNavigatingBackStatus, 
+  const {
+    fetchSubcategories,
+    clearSubcategoriesCache,
+    setNavigatingBackStatus,
     getSelectedSubcategory,
-    setSelectedSubcategory 
+    setSelectedSubcategory
   } = useCategory();
-  
+
   // Memoize các hàm callback để tránh re-renders không cần thiết
   const memoizedFetchSubcategories = useCallback((catId, force) => {
     return fetchSubcategories(catId, force);
   }, [fetchSubcategories]);
-  
+
   // Theo dõi lỗi trình duyệt với MCP
   useEffect(() => {
     // Theo dõi lỗi trình duyệt
@@ -244,22 +247,22 @@ const CategoryProducts = () => {
         error: event.error?.stack || 'Unknown',
         timestamp: new Date().toISOString()
       };
-      
+
       // Lưu lỗi vào ref
       mcpErrorsRef.current.push(errorInfo);
-      
+
       // Giới hạn số lượng lỗi lưu trữ
       if (mcpErrorsRef.current.length > 10) {
         mcpErrorsRef.current.shift();
       }
-      
+
       // Ghi log lỗi
       console.error('MCP Error Monitoring:', errorInfo);
-      
+
       // Reset trạng thái nếu có lỗi với việc tải sản phẩm
       if (
-        event.message.includes('product') || 
-        event.message.includes('categor') || 
+        event.message.includes('product') ||
+        event.message.includes('categor') ||
         event.message.includes('fetch')
       ) {
         isProcessingRef.current = false;
@@ -267,10 +270,10 @@ const CategoryProducts = () => {
         setLoading(false);
       }
     };
-    
+
     // Lắng nghe lỗi trình duyệt
     window.addEventListener('error', handleError);
-    
+
     // Lắng nghe promise rejection
     window.addEventListener('unhandledrejection', (event) => {
       handleError({
@@ -279,13 +282,13 @@ const CategoryProducts = () => {
         timestamp: new Date().toISOString()
       });
     });
-    
+
     return () => {
       window.removeEventListener('error', handleError);
       window.removeEventListener('unhandledrejection', handleError);
     };
   }, []);
-  
+
   // Lưu trữ rootCategoryId ban đầu khi component mount lần đầu
   useEffect(() => {
     if (!originalRootId) {
@@ -294,18 +297,18 @@ const CategoryProducts = () => {
       setOriginalRootId(rootId);
     }
   }, [originalRootId, location.pathname, id]);
-  
+
   // Kiểm tra nếu đang quay lại từ trang sản phẩm
   useEffect(() => {
     const isReturningFromProduct = location.state?.fromProduct;
     const isBrowserBack = location.action === 'POP';
-    
+
     if (isReturningFromProduct || isBrowserBack) {
       console.log('CategoryProducts: Returning from product page or browser back');
-      
+
       // Đánh dấu là đang quay lại trong context
       setNavigatingBackStatus(true);
-      
+
       // Kiểm tra nếu có subcategory đã chọn
       if (id) {
         const selectedSubId = getSelectedSubcategory(id);
@@ -313,14 +316,14 @@ const CategoryProducts = () => {
           console.log('CategoryProducts: Found previously selected subcategory', selectedSubId);
         }
       }
-      
+
       // Xóa trạng thái để không gây lỗi khi làm mới trang
       if (isReturningFromProduct) {
-        navigate(location.pathname, { 
-          replace: true, 
-          state: { 
+        navigate(location.pathname, {
+          replace: true,
+          state: {
             isBack: true // Thêm cờ isBack để đánh dấu là đang quay lại
-          } 
+          }
         });
       }
     } else {
@@ -328,25 +331,34 @@ const CategoryProducts = () => {
       setNavigatingBackStatus(false);
     }
   }, [location, navigate, id, getSelectedSubcategory, setNavigatingBackStatus]);
-  
+
   // Xác định rootCategoryId mỗi khi pathname hoặc id thay đổi
   useEffect(() => {
     // Ngăn chặn xử lý nếu đang trong quá trình fetch
     if (isProcessingRef.current) {
       return;
     }
-    
+
     isProcessingRef.current = true;
-    
+
+    // Kiểm tra tính hợp lệ của id
+    const parsedId = parseInt(id);
+    if (isNaN(parsedId)) {
+      console.error('CategoryProducts: Invalid category ID:', id);
+      setLoading(false);
+      isProcessingRef.current = false;
+      return;
+    }
+
     // Luôn cập nhật rootCategoryId là id hiện tại để lấy đúng sản phẩm
-    const rootId = getRootCategoryId(location.pathname) || id;
-    console.log('CategoryProducts: Setting rootCategoryId to', rootId, 'from URL or id:', id);
+    const rootId = getRootCategoryId(location.pathname) || parsedId;
+    console.log('CategoryProducts: Setting rootCategoryId to', rootId, 'from URL or id:', parsedId);
     setRootCategoryId(rootId);
-    
+
     // Đảm bảo subcategories được load cho danh mục phù hợp
     if (rootId) {
       const isReturningFromProduct = location.state?.fromProduct;
-      
+
       // Nếu có originalRootId, luôn fetch subcategories của danh mục gốc
       if (originalRootId) {
         memoizedFetchSubcategories(originalRootId, isReturningFromProduct)
@@ -372,34 +384,34 @@ const CategoryProducts = () => {
           });
       }
     }
-    
+
     setTimeout(() => {
       isProcessingRef.current = false;
     }, 300);
   }, [location.pathname, id, memoizedFetchSubcategories, location.state, originalRootId]);
-  
+
   // Reset trang về 1 khi id thay đổi
   useEffect(() => {
     // Khi id thay đổi, reset trang về 1
     console.log('CategoryProducts: Detected id change, resetting to page 1');
     setCurrentPage(1);
   }, [id]);
-  
+
   // Lấy thông tin category từ ID
   useEffect(() => {
     // Ngăn chặn xử lý nếu đang trong quá trình fetch hoặc ID chưa thay đổi
     if (processingCategoryInfoRef.current || id === prevIdRef.current) {
       return;
     }
-    
+
     processingCategoryInfoRef.current = true;
     prevIdRef.current = id;
-    
+
     const fetchCategoryInfo = async () => {
       try {
         const allCategories = await productService.getCategories();
         const categoryInfo = allCategories.find(c => c.category_id === parseInt(id));
-        
+
         if (categoryInfo) {
           setCategory(categoryInfo);
         } else {
@@ -423,21 +435,21 @@ const CategoryProducts = () => {
         }, 300);
       }
     };
-    
+
     fetchCategoryInfo();
   }, [id]);
-  
+
   // Lấy sản phẩm thuộc category
   const fetchProducts = useCallback(async () => {
     if (!id) return;
-    
+
     setLoading(true);
     try {
       console.log('===== FETCHING PRODUCTS =====');
       console.log('Danh mục ID:', id);
       console.log('Trang hiện tại:', currentPage);
       console.log('Bộ lọc:', filters);
-      
+
       // Xóa cache trước khi gọi API
       try {
         localStorage.clear(); // Xóa tất cả localStorage
@@ -446,18 +458,18 @@ const CategoryProducts = () => {
       } catch (e) {
         console.error('Lỗi khi xóa cache:', e);
       }
-      
+
       // Xác định loại sắp xếp cho API
-      let sort_by = "name";
-      switch(filters.sort) {
+      let sort_by = "created_at"; // Mặc định sắp xếp theo thời gian tạo mới nhất
+      switch (filters.sort) {
         case 'price-asc': sort_by = "price_asc"; break;
         case 'price-desc': sort_by = "price_desc"; break;
-        case 'newest': sort_by = "newest"; break;
-        case 'name-asc': sort_by = "name"; break;
-        case 'name-desc': sort_by = "name"; break; // Bổ sung xử lý đảo ngược sau khi nhận kết quả
-        default: sort_by = "name";
+        case 'newest': sort_by = "created_at"; break;
+        case 'name-asc': sort_by = "name_asc"; break;
+        case 'name-desc': sort_by = "name_desc"; break;
+        default: sort_by = "created_at";
       }
-      
+
       const result = await productService.getProductsByCategory(id, {
         include_subcategories: true,
         page: currentPage,
@@ -467,9 +479,8 @@ const CategoryProducts = () => {
         maxPrice: filters.maxPrice
       });
 
-
       console.log('Kết quả phân trang:', result);
-      
+
       // Kiểm tra chi tiết sản phẩm đầu tiên
       if (result.products && result.products.length > 0) {
         console.log('===== CHI TIẾT SẢN PHẨM ĐẦU TIÊN =====');
@@ -479,40 +490,28 @@ const CategoryProducts = () => {
         console.log('Giá giảm:', result.products[0].discountPrice);
         console.log('===== END DETAILS =====');
       }
-      
-      // Cập nhật state với kết quả phân trang
-      setProducts(filters.sort === 'name-desc' ? [...result.products].reverse() : result.products);
-      setTotalPages(result.pagination.total_pages);
-      
-      // Cập nhật thông tin danh mục nếu có
-      if (result.category && !category) {
-        setCategory(result.category);
-      }
+
+      setProducts(result.products || []);
+      setTotalPages(result.pagination?.total_pages || 1);
     } catch (error) {
-      console.error('Failed to fetch products:', error);
-      // Ghi log lỗi MCP
-      mcpErrorsRef.current.push({
-        message: `Failed to fetch products: ${error.message}`,
-        timestamp: new Date().toISOString(),
-        context: { id, currentPage, filters }
-      });
+      console.error('Lỗi khi lấy sản phẩm:', error);
       setProducts([]);
       setTotalPages(1);
     } finally {
       setLoading(false);
     }
-  }, [id, currentPage, filters, category]);
-  
+  }, [id, currentPage, filters]);
+
   // Fetch sản phẩm khi id, trang hoặc bộ lọc thay đổi
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
-  
+
   const handlePageChange = (page) => {
     setCurrentPage(page);
     window.scrollTo(0, 0);
   };
-  
+
   const handleSortChange = (e) => {
     setFilters(prev => ({
       ...prev,
@@ -520,7 +519,7 @@ const CategoryProducts = () => {
     }));
     setCurrentPage(1);
   };
-  
+
   const handleFilterChange = (newFilters) => {
     setFilters(prev => ({
       ...prev,
@@ -528,24 +527,24 @@ const CategoryProducts = () => {
     }));
     setCurrentPage(1);
   };
-  
+
   // Hàm truy xuất lỗi MCP cho debug
   const getMCPErrors = useCallback(() => {
     return mcpErrorsRef.current;
   }, []);
-  
+
   const calculateAdjustedPrice = (price, unit = 'kg') => {
     if (!price) return 0;
-    
+
     // Nếu đơn vị là gam hoặc ml, không cần điều chỉnh
     if (unit === 'g' || unit === 'ml') {
       return price;
     }
-    
+
     // Áp dụng công thức cho đơn vị kg, l, etc.
     return price * 1000 / (unit === 'kg' || unit === 'l' ? 1 : parseFloat(unit) || 1);
   };
-  
+
   return (
     <MainLayout>
       <PageContainer>
@@ -570,26 +569,26 @@ const CategoryProducts = () => {
             </li>
           </ul>
         </BreadcrumbNav>
-        
+
         <ContentContainer>
-          <CategorySidebar 
-            categoryId={originalRootId || rootCategoryId} 
+          <CategorySidebar
+            categoryId={originalRootId || rootCategoryId}
             onFilterChange={handleFilterChange}
           />
-          
+
           <MainContent>
             {category && (
               <CategoryHeader>
                 <CategoryTitle>{category.name}</CategoryTitle>
               </CategoryHeader>
             )}
-            
+
             <ProductsHeader>
               <ProductCount>
                 {loading ? 'Đang tải...' : `Hiển thị ${products.length} sản phẩm`}
               </ProductCount>
-              <SortSelector 
-                value={filters.sort} 
+              <SortSelector
+                value={filters.sort}
                 onChange={handleSortChange}
               >
                 <option value="newest">Mới nhất</option>
@@ -599,7 +598,7 @@ const CategoryProducts = () => {
                 <option value="name-desc">Tên: Z-A</option>
               </SortSelector>
             </ProductsHeader>
-            
+
             {loading ? (
               <LoadingSpinner>
                 Đang tải sản phẩm...
@@ -608,25 +607,27 @@ const CategoryProducts = () => {
               <>
                 <ProductGrid>
                   {products.map(product => (
-                    <CategoryProductItem 
-                      key={product.product_id || product.id} 
+                    <CategoryProductItem
+                      key={product.product_id || product.id}
                       product={{
                         id: product.product_id || product.id,
-                        name: product.name || '',
-                        originalPrice: product.original_price || product.originalPrice || 0,
-                        discountPrice: product.price || product.discountPrice || null,
+                        name: product.name,
+                        price: product.price || product.discountPrice,
+                        originalPrice: product.original_price || product.originalPrice,
                         discountPercent: product.discount_percent || 0,
-                        image: product.image || '',
-                        rating: product.average_rating || 4,
-                        reviewCount: product.review_count || 10,
-                        unit: product.unit || 'kg'
-                      }} 
+                        image: product.image || product.images?.[0],
+                        images: product.images || [],
+                        rating: product.average_rating || 0,
+                        reviewCount: product.review_count || 0,
+                        unit: product.unit || 'kg',
+                        inStock: product.in_stock !== false
+                      }}
                     />
                   ))}
                 </ProductGrid>
-                
+
                 {totalPages > 1 && (
-                  <Pagination 
+                  <Pagination
                     currentPage={currentPage}
                     totalPages={totalPages}
                     onPageChange={handlePageChange}
