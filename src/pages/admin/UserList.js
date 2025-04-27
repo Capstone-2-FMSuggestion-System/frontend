@@ -50,10 +50,10 @@ const UserList = () => {
           name: user.full_name,
           username: user.username,
           email: user.email,
-          dateCreated: new Date(user.created_at).toLocaleDateString(),
-          role: user.role.charAt(0).toUpperCase() + user.role.slice(1),
-          status: status.charAt(0).toUpperCase() + status.slice(1),
-          avatar_url: user.avatar_url
+          dateCreated: new Date(user.created_at).toLocaleDateString(), //
+          role: user.role.charAt(0).toUpperCase() + user.role.slice(1), //
+          status: status.charAt(0).toUpperCase() + status.slice(1), //
+          avatar_url: user.avatar_url //
         };
       });
       
@@ -64,11 +64,11 @@ const UserList = () => {
         limit: response.limit
       });
     } catch (err) {
-      console.error("Lỗi khi lấy danh sách người dùng:", err);
-      setError("Không thể tải danh sách người dùng. Vui lòng thử lại sau.");
-      toast.error("Không thể tải danh sách người dùng: " + (err.message || "Lỗi không xác định"));
+      console.error("Lỗi khi lấy danh sách người dùng : ", err);
+      setError("Không thể tải danh sách người dùng. Vui lòng thử lại sau. ");
+      toast.error("Không thể tải danh sách người dùng : " + (err.message || "Lỗi không xác định.")); 
     } finally {
-      setLoading(false);
+      setLoading(false); //
     }
   };
 
@@ -82,12 +82,12 @@ const UserList = () => {
   const handleSearch = async (searchTerms) => {
     try {
       setLoading(true);
-      const searchParams = {};
+      const searchParams = {}; //
       
       if (searchTerms.term) searchParams.name = searchTerms.term;
-      if (searchTerms.role && searchTerms.role !== 'all') searchParams.role = searchTerms.role.toLowerCase();
+      if (searchTerms.role && searchTerms.role !== 'all') searchParams.role = searchTerms.role.toLowerCase(); //
       if (searchTerms.status && searchTerms.status !== 'all') {
-        searchParams.status = searchTerms.status.toLowerCase();
+        searchParams.status = searchTerms.status.toLowerCase(); //
         
         // Đảm bảo server hiểu được trạng thái block
         if (searchParams.status === 'block') {
@@ -102,9 +102,9 @@ const UserList = () => {
         // Chuẩn hóa trạng thái: chỉ sử dụng 'active' hoặc 'block'
         let status = user.status.toLowerCase();
         if (status === 'inactive' || status === 'blocked') {
-          status = 'block';
+          status = 'block'; //
         } else {
-          status = 'active';
+          status = 'active'; //
         }
         
         return {
@@ -116,7 +116,7 @@ const UserList = () => {
           role: user.role.charAt(0).toUpperCase() + user.role.slice(1),
           status: status.charAt(0).toUpperCase() + status.slice(1),
           avatar_url: user.avatar_url
-        };
+        }; //
       });
       
       setUsers(formattedUsers);
@@ -126,9 +126,9 @@ const UserList = () => {
         limit: response.limit
       });
     } catch (err) {
-      console.error("Lỗi khi tìm kiếm người dùng:", err);
-      setError("Không thể tìm kiếm người dùng. Vui lòng thử lại sau.");
-      toast.error("Không thể tìm kiếm người dùng: " + (err.message || "Lỗi không xác định"));
+      console.error("Lỗi khi tìm kiếm người dùng : ", err);
+      setError("Không thể tìm kiếm người dùng. Vui lòng thử lại sau. ");
+      toast.error("Không thể tìm kiếm người dùng : " + (err.message || "Lỗi không xác định. "));
     } finally {
       setLoading(false);
     }
@@ -152,15 +152,15 @@ const UserList = () => {
         full_name: userData.name,
         role: userData.role.toLowerCase(),
         status: status
-      };
+      }; //
       
       const result = await adminService.addUser(apiUserData);
       toast.success("Thêm người dùng thành công!");
       
       // Tải lại danh sách sau khi thêm
-      await fetchUsers();
+      await fetchUsers(); //
       
-      return true;
+      return true; //
     } catch (err) {
       console.error("Lỗi khi thêm người dùng mới:", err);
       toast.error("Không thể thêm người dùng: " + (err.message || "Lỗi không xác định"));
@@ -172,7 +172,7 @@ const UserList = () => {
 
   const handleUpdateUser = async (userId, userData) => {
     try {
-      setLoading(true);
+      setLoading(true); //
       
       // Chuyển đổi trạng thái để phù hợp với API
       let status = userData.status.toLowerCase();
@@ -194,7 +194,7 @@ const UserList = () => {
         status: status,
         // Giữ nguyên avatar_url nếu người dùng đã có
         avatar_url: currentUser?.avatar_url || ''
-      };
+      }; //
       
       // Chỉ thêm password nếu được cung cấp
       if (userData.password) {
@@ -205,17 +205,17 @@ const UserList = () => {
       toast.success("Cập nhật người dùng thành công!");
       
       // Tải lại danh sách sau khi cập nhật
-      await fetchUsers();
+      await fetchUsers(); //
       
-      return true;
+      return true; //
     } catch (err) {
-      console.error(`Lỗi khi cập nhật người dùng ID ${userId}:`, err);
-      toast.error("Không thể cập nhật người dùng: " + (err.message || "Lỗi không xác định"));
-      throw new Error(err.message || "Không thể cập nhật thông tin người dùng");
+      console.error(`Lỗi khi cập nhật người dùng ID ${userId}: `, err);
+      toast.error("Không thể cập nhật người dùng : " + (err.message || "Lỗi không xác định. ")); 
+      throw new Error(err.message || "Không thể cập nhật thông tin người dùng. ");
     } finally {
-      setLoading(false);
+      setLoading(false); //
     }
-  };
+  }; //
 
   const handleDeleteUser = async (userId) => {
     try {
@@ -229,8 +229,8 @@ const UserList = () => {
       return true;
     } catch (err) {
       console.error(`Lỗi khi xóa người dùng ID ${userId}:`, err);
-      toast.error("Không thể xóa người dùng: " + (err.message || "Lỗi không xác định"));
-      throw new Error(err.message || "Không thể xóa người dùng");
+      toast.error("Không thể xóa người dùng : " + (err.message || "Lỗi không xác định. "));
+      throw new Error(err.message || "Không thể xóa người dùng. ");
     } finally {
       setLoading(false);
     }
@@ -256,16 +256,16 @@ const UserList = () => {
             total: pagination.total,
             skip: pagination.skip,
             limit: pagination.limit,
-            onPageChange: handlePageChange
+            onPageChange: handlePageChange //
           }}
           onSearch={handleSearch}
           onAddUser={handleAddUser}
-          onUpdateUser={handleUpdateUser}
-          onDeleteUser={handleDeleteUser}
+          onUpdateUser={handleUpdateUser} //
+          onDeleteUser={handleDeleteUser} //
         />
       </Container>
     // </AdminLayout>
-  );
-};
+  ); //
+}; //
 
 export default UserList;

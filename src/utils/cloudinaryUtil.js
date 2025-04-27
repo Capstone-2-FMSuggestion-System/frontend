@@ -5,9 +5,9 @@
 import { v4 as uuidv4 } from 'uuid';
 
 // Thông tin cấu hình Cloudinary từ biến môi trường
-const CLOUDINARY_CLOUD_NAME = "ddzks3jtb";
-const CLOUDINARY_API_KEY = "396451297575275";
-const CLOUDINARY_API_SECRET = "ldDZdyY8Zo-xyWr9RuJ97OCqUl4";
+const CLOUDINARY_CLOUD_NAME = "dkleeailh";
+const CLOUDINARY_API_KEY = "171326873511271";
+const CLOUDINARY_API_SECRET = "aIwwnuXsnlhQYM0VsavcR_l56kQ-xyWr9RuJ97OCqUl4";
 const CLOUDINARY_UPLOAD_PRESET = "data_fm";
 const CLOUDINARY_FOLDER = "fm_suggestion_system";
 
