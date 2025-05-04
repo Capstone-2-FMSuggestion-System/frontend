@@ -205,7 +205,7 @@ const Dashboard = () => {
     recentOrders: [],
     revenueData: []
   });
-  
+
   // Extract fetchDashboardData to a separate function so we can reuse it
   const fetchDashboardData = async (forceRefresh = false) => {
     setIsLoading(true);
@@ -216,7 +216,7 @@ const Dashboard = () => {
       const recentOrdersResponse = await adminService.getRecentOrders(5, forceRefresh);
       // Lấy dữ liệu doanh thu
       const revenueResponse = await adminService.getRevenueOverview(timeRange, forceRefresh);
-      
+
       setDashboardData({
         totalOrders: stats.total_orders,
         totalRevenue: stats.total_revenue,
@@ -234,21 +234,21 @@ const Dashboard = () => {
       setIsLoading(false);
     }
   };
-  
+
   useEffect(() => {
     fetchDashboardData();
   }, [timeRange]);
-  
+
   const handleRefreshData = async () => {
     if (isRefreshing) return; // Prevent multiple refreshes at once
-    
+
     setIsRefreshing(true);
     toast.info("Đang làm mới dữ liệu...");
-    
+
     try {
       // Bypass cache by adding timestamp to requests (implemented in adminService)
       const success = await fetchDashboardData(true);
-      
+
       if (success) {
         toast.success("Dữ liệu đã được cập nhật");
       } else {
@@ -261,7 +261,7 @@ const Dashboard = () => {
       setIsRefreshing(false);
     }
   };
-  
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -273,147 +273,149 @@ const Dashboard = () => {
   const handleTimeRangeChange = (range) => {
     setTimeRange(range);
   };
-  
+
   return (
-      <DashboardContainer>
-        <DashboardHeader>
-          <DashboardTitle>Dashboard</DashboardTitle>
-          <RefreshButton 
-            onClick={handleRefreshData} 
-            disabled={isLoading || isRefreshing}
-            isLoading={isRefreshing}
-          >
-            <FaSyncAlt className={isRefreshing ? "spin-animation" : ""} /> 
-            {isRefreshing ? "Đang làm mới..." : "Làm mới dữ liệu"}
-          </RefreshButton>
-        </DashboardHeader>
-        
-        {isLoading && !isRefreshing ? (
-          <LoadingIndicator>Đang tải dữ liệu dashboard...</LoadingIndicator>
-        ) : (
-          <>
-            <StatsGrid>
-              <StatCard>
-                <StatIcon bgColor="rgba(76, 175, 80, 0.1)" iconColor="#4CAF50">
-                  <FaShoppingBag />
-                </StatIcon>
-                <StatContent>
-                  <StatValue>{dashboardData.totalOrders}</StatValue>
-                  <StatLabel>Tổng đơn hàng</StatLabel>
-                </StatContent>
-              </StatCard>
-              
-              <StatCard>
-                <StatIcon bgColor="rgba(33, 150, 243, 0.1)" iconColor="#2196F3">
-                  <FaMoneyBillWave />
-                </StatIcon>
-                <StatContent>
-                  <StatValue>{formatCurrency(dashboardData.totalRevenue)}</StatValue>
-                  <StatLabel>Tổng doanh thu</StatLabel>
-                </StatContent>
-              </StatCard>
-              
-              <StatCard>
-                <StatIcon bgColor="rgba(255, 152, 0, 0.1)" iconColor="#FF9800">
-                  <FaUsers />
-                </StatIcon>
-                <StatContent>
-                  <StatValue>{dashboardData.totalCustomers}</StatValue>
-                  <StatLabel>Tổng khách hàng</StatLabel>
-                </StatContent>
-              </StatCard>
-              
-              <StatCard>
-                <StatIcon bgColor="rgba(244, 67, 54, 0.1)" iconColor="#F44336">
-                  <FaShoppingBag />
-                </StatIcon>
-                <StatContent>
-                  <StatValue>{dashboardData.totalProducts}</StatValue>
-                  <StatLabel>Tổng sản phẩm</StatLabel>
-                </StatContent>
-              </StatCard>
-            </StatsGrid>
-            
-            <ChartContainer>
-              <ChartCard>
-                <ChartHeader>
-                  <h2><FaChartLine /> Tổng quan doanh thu</h2>
-                  <TimeRangeSelector>
-                    <TimeRangeButton 
-                      active={timeRange === 'daily'} 
-                      onClick={() => handleTimeRangeChange('daily')}
-                    >
-                      Ngày
-                    </TimeRangeButton>
-                    <TimeRangeButton 
-                      active={timeRange === 'weekly'} 
-                      onClick={() => handleTimeRangeChange('weekly')}
-                    >
-                      Tuần
-                    </TimeRangeButton>
-                    <TimeRangeButton 
-                      active={timeRange === 'monthly'} 
-                      onClick={() => handleTimeRangeChange('monthly')}
-                    >
-                      Tháng
-                    </TimeRangeButton>
-                    <TimeRangeButton 
-                      active={timeRange === 'yearly'} 
-                      onClick={() => handleTimeRangeChange('yearly')}
-                    >
-                      Năm
-                    </TimeRangeButton>
-                  </TimeRangeSelector>
-                </ChartHeader>
-                <RevenueChart 
-                  revenueData={dashboardData.revenueData} 
-                  timeRange={timeRange}
-                  loading={isLoading}
-                />
-              </ChartCard>
-              
-              <ChartCard>
-                <ChartHeader>
-                  <h2>Đơn hàng gần đây</h2>
-                </ChartHeader>
-                <RecentOrdersTable>
-                  <thead>
-                    <tr>
-                      <th>Mã đơn</th>
-                      <th>Ngày</th>
-                      <th>Khách hàng</th>
-                      <th>Số tiền</th>
-                      <th>Trạng thái</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dashboardData.recentOrders.length > 0 ? (
-                      dashboardData.recentOrders.map(order => (
-                        <tr key={order.order_id}>
-                          <td>#{order.order_id}</td>
-                          <td>{new Date(order.order_date).toLocaleDateString('vi-VN')}</td>
-                          <td>{order.customer_name}</td>
-                          <td>{formatCurrency(order.total_amount)}</td>
-                          <td className={`status-${order.status.toLowerCase()}`}>
-                            {order.status === 'PENDING' && 'Chờ xử lý'}
-                            {order.status === 'PROCESSING' && 'Đang xử lý'}
-                            {order.status === 'COMPLETED' && 'Hoàn thành'}
-                            {order.status === 'CANCELLED' && 'Đã hủy'}
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="5" style={{ textAlign: 'center' }}>Không có đơn hàng nào</td>
+    <DashboardContainer>
+      <DashboardHeader>
+        <DashboardTitle>Dashboard</DashboardTitle>
+        <RefreshButton
+          onClick={handleRefreshData}
+          disabled={isLoading || isRefreshing}
+          isLoading={isRefreshing}
+        >
+          <FaSyncAlt className={isRefreshing ? "spin-animation" : ""} />
+          {isRefreshing ? "Đang làm mới..." : "Làm mới dữ liệu"}
+        </RefreshButton>
+      </DashboardHeader>
+
+      {isLoading && !isRefreshing ? (
+        <LoadingIndicator>Đang tải dữ liệu dashboard...</LoadingIndicator>
+      ) : (
+        <>
+          <StatsGrid>
+            <StatCard>
+              <StatIcon bgColor="rgba(76, 175, 80, 0.1)" iconColor="#4CAF50">
+                <FaShoppingBag />
+              </StatIcon>
+              <StatContent>
+                <StatValue>{dashboardData.totalOrders}</StatValue>
+                <StatLabel>Tổng đơn hàng</StatLabel>
+              </StatContent>
+            </StatCard>
+
+            <StatCard>
+              <StatIcon bgColor="rgba(33, 150, 243, 0.1)" iconColor="#2196F3">
+                <FaMoneyBillWave />
+              </StatIcon>
+              <StatContent>
+                <StatValue>{formatCurrency(dashboardData.totalRevenue)}</StatValue>
+                <StatLabel>Tổng doanh thu</StatLabel>
+              </StatContent>
+            </StatCard>
+
+            <StatCard>
+              <StatIcon bgColor="rgba(255, 152, 0, 0.1)" iconColor="#FF9800">
+                <FaUsers />
+              </StatIcon>
+              <StatContent>
+                <StatValue>{dashboardData.totalCustomers}</StatValue>
+                <StatLabel>Tổng khách hàng</StatLabel>
+              </StatContent>
+            </StatCard>
+
+            <StatCard>
+              <StatIcon bgColor="rgba(244, 67, 54, 0.1)" iconColor="#F44336">
+                <FaShoppingBag />
+              </StatIcon>
+              <StatContent>
+                <StatValue>{dashboardData.totalProducts}</StatValue>
+                <StatLabel>Tổng sản phẩm</StatLabel>
+              </StatContent>
+            </StatCard>
+          </StatsGrid>
+
+          <ChartContainer>
+            <ChartCard>
+              <ChartHeader>
+                <h2><FaChartLine /> Tổng quan doanh thu</h2>
+                <TimeRangeSelector>
+                  <TimeRangeButton
+                    active={timeRange === 'daily'}
+                    onClick={() => handleTimeRangeChange('daily')}
+                  >
+                    Ngày
+                  </TimeRangeButton>
+                  <TimeRangeButton
+                    active={timeRange === 'weekly'}
+                    onClick={() => handleTimeRangeChange('weekly')}
+                  >
+                    Tuần
+                  </TimeRangeButton>
+                  <TimeRangeButton
+                    active={timeRange === 'monthly'}
+                    onClick={() => handleTimeRangeChange('monthly')}
+                  >
+                    Tháng
+                  </TimeRangeButton>
+                  <TimeRangeButton
+                    active={timeRange === 'yearly'}
+                    onClick={() => handleTimeRangeChange('yearly')}
+                  >
+                    Năm
+                  </TimeRangeButton>
+                </TimeRangeSelector>
+              </ChartHeader>
+              <RevenueChart
+                revenueData={dashboardData.revenueData}
+                timeRange={timeRange}
+                loading={isLoading}
+              />
+            </ChartCard>
+
+            <ChartCard>
+              <ChartHeader>
+                <h2>Đơn hàng gần đây</h2>
+              </ChartHeader>
+              <RecentOrdersTable>
+                <thead>
+                  <tr>
+                    <th>Mã đơn</th>
+                    <th>Ngày</th>
+                    <th>Khách hàng</th>
+                    <th>Số tiền</th>
+                    <th>Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dashboardData.recentOrders.length > 0 ? (
+                    dashboardData.recentOrders.map(order => (
+                      <tr key={order.order_id}>
+                        <td>#{order.order_id}</td>
+                        <td>{new Date(order.created_at).toLocaleDateString('vi-VN')}</td>
+                        <td>{order.customer_name || order.customer?.name || order.customerName || 'Khách hàng'}</td>
+                        <td>{formatCurrency(order.total_amount)}</td>
+                        <td className={`status-${order.status.toLowerCase()}`}>
+                          {order.status.toUpperCase() === 'PENDING' && 'Chờ xử lý'}
+                          {order.status.toUpperCase() === 'PROCESSING' && 'Đang xử lý'}
+                          {order.status.toUpperCase() === 'COMPLETED' && 'Hoàn thành'}
+                          {order.status.toUpperCase() === 'CANCELLED' && 'Đã hủy'}
+                          {order.status.toUpperCase() === 'DELIVERED' && 'Đã giao hàng'}
+                          {!['PENDING', 'PROCESSING', 'COMPLETED', 'CANCELLED', 'DELIVERED'].includes(order.status.toUpperCase()) && order.status}
+                        </td>
                       </tr>
-                    )}
-                  </tbody>
-                </RecentOrdersTable>
-              </ChartCard>
-            </ChartContainer>
-          </>
-        )}
-      </DashboardContainer>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="5" style={{ textAlign: 'center' }}>Không có đơn hàng nào</td>
+                    </tr>
+                  )}
+                </tbody>
+              </RecentOrdersTable>
+            </ChartCard>
+          </ChartContainer>
+        </>
+      )}
+    </DashboardContainer>
   );
 };
 

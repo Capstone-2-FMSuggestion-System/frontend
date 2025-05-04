@@ -2,13 +2,13 @@
 import React, { useContext } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
-import { 
-  FaTachometerAlt, 
-  FaUsers, 
-  FaShoppingCart, 
-  FaBoxes, 
-  FaTags, 
-  FaHome, 
+import {
+  FaTachometerAlt,
+  FaUsers,
+  FaShoppingCart,
+  FaBoxes,
+  FaTags,
+  FaHome,
   FaSignOutAlt,
   FaBars
 } from 'react-icons/fa';
@@ -16,24 +16,24 @@ import { AuthContext } from '../context/AuthContext';
 
 const AdminContainer = styled.div`
   display: flex;
-  min-height: 100vh;
+  min-height: 200vh;
 `;
 
 const Sidebar = styled.aside`
-  width: 250px;
-  background-color: #0A2342;
+  width: 260px; /* Chiều rộng sidebar */
+  background: linear-gradient(135deg, #0A2342, #1B3B5F); /* Gradient màu nền */
   color: #fff;
-  transition: all 0.3s;
-  transform: ${({ isOpen }) => isOpen ? 'translateX(0)' : 'translateX(-100%)'};
-  position: fixed;
+  position: fixed; /* Cố định sidebar */
   top: 0;
   left: 0;
-  height: 100%;
+  height: 100vh; /* Chiều cao toàn màn hình */
   z-index: 1000;
-  
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2); /* Thêm bóng cho sidebar */
+  transition: all 0.3s ease-in-out;
+  transform: ${({ isOpen }) => (isOpen ? 'translateX(0)' : 'translateX(-100%)')};
+
   @media (min-width: 992px) {
     transform: translateX(0);
-    position: relative;
   }
 `;
 
@@ -43,11 +43,12 @@ const SidebarHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  
+
   h2 {
     margin: 0;
     color: #fff;
-    font-size: 1.5rem;
+    font-size: 1.8rem; /* Tăng kích thước chữ */
+    font-weight: bold;
   }
 `;
 
@@ -57,24 +58,26 @@ const SidebarMenu = styled.ul`
   margin: 0;
 `;
 
+
 const SidebarMenuItem = styled.li`
   a {
     display: flex;
     align-items: center;
     padding: 15px 20px;
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(255, 255, 255, 0.8); /* Màu chữ nhạt hơn */
     text-decoration: none;
     border-left: 3px solid transparent;
-    transition: all 0.3s;
-    
+    transition: all 0.3s ease-in-out;
+
     &:hover, &.active {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.1); /* Hiệu ứng hover */
       color: #fff;
-      border-left-color: #4CAF50;
+      border-left-color: #4CAF50; /* Đổi màu viền trái khi active */
     }
-    
+
     svg {
-      margin-right: 10px;
+      margin-right: 15px; /* Tăng khoảng cách giữa icon và text */
+      font-size: 1.2rem; /* Tăng kích thước icon */
     }
   }
 `;
@@ -82,12 +85,13 @@ const SidebarMenuItem = styled.li`
 const MainContent = styled.main`
   flex: 1;
   padding: 20px;
-  margin-left: ${({ sidebarOpen }) => sidebarOpen ? '0' : '0'};
+  margin-left: 260px; /* Đẩy nội dung sang phải bằng chiều rộng của sidebar */
   transition: all 0.3s;
-  width: 100%;
-  
-  @media (min-width: 992px) {
-    margin-left: 0;
+  width: calc(100% - 260px); /* Đảm bảo nội dung không bị tràn */
+
+  @media (max-width: 992px) {
+    margin-left: 0; /* Trả về 0 trên màn hình nhỏ */
+    width: 100%;
   }
 `;
 
@@ -165,23 +169,23 @@ const AdminLayout = ({ children, title }) => {
   const { currentUser, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
-  
+
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
-  
+
   // Close sidebar when clicking outside on mobile
   const closeSidebar = () => {
     if (sidebarOpen) {
       setSidebarOpen(false);
     }
   };
-  
+
   return (
     <AdminContainer>
       <Sidebar isOpen={sidebarOpen}>
@@ -221,9 +225,9 @@ const AdminLayout = ({ children, title }) => {
           </SidebarMenuItem>
         </SidebarMenu>
       </Sidebar>
-      
+
       <Overlay isOpen={sidebarOpen} onClick={closeSidebar} />
-      
+
       <MainContent sidebarOpen={sidebarOpen}>
         <TopBar>
           <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -238,7 +242,7 @@ const AdminLayout = ({ children, title }) => {
             </button>
           </UserInfo>
         </TopBar>
-        
+
         {children}
       </MainContent>
     </AdminContainer>

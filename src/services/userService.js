@@ -51,12 +51,12 @@ const userService = {
         responseStatus: error.response?.status,
         responseData: error.response?.data?.detail || error.response?.data
       });
-      
+
       // Tạo thông báo lỗi chi tiết để frontend hiển thị
-      const errorMessage = error.response?.data?.detail || 
-                          error.response?.data?.message || 
-                          'Cập nhật ảnh đại diện thất bại';
-      
+      const errorMessage = error.response?.data?.detail ||
+        error.response?.data?.message ||
+        'Cập nhật ảnh đại diện thất bại';
+
       throw new Error(errorMessage);
     }
   },
@@ -82,10 +82,23 @@ const userService = {
    */
   addToCart: async (cartItem) => {
     try {
+      console.log('Sending cart item to API:', cartItem);
       const response = await api.post('/api/users/cart', cartItem);
+      console.log('API response:', response.data);
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.detail || 'Không thể thêm vào giỏ hàng');
+      console.error('Error adding to cart:', error);
+      if (error.response) {
+        console.error('Server response:', error.response.data);
+        // Trả về lỗi với thông tin chi tiết hơn
+        const errorMessage = error.response.data.detail
+          ? (Array.isArray(error.response.data.detail)
+            ? error.response.data.detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join(', ')
+            : error.response.data.detail)
+          : 'Không thể thêm vào giỏ hàng';
+        throw new Error(errorMessage);
+      }
+      throw new Error('Không thể thêm vào giỏ hàng');
     }
   },
 
@@ -97,10 +110,27 @@ const userService = {
    */
   updateCartItem: async (cartItemId, quantity) => {
     try {
-      const response = await api.put(`/api/users/cart/${cartItemId}`, { quantity });
+      // Đảm bảo quantity là số và nằm trong khoảng hợp lệ
+      const validQuantity = Math.max(1, Math.min(parseInt(quantity), 99));
+
+      // Gửi quantity dưới dạng query parameter trong URL
+      const response = await api.put(`/api/users/cart/${cartItemId}?quantity=${validQuantity}`);
+
+      console.log('Cart update response:', response.data);
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.detail || 'Không thể cập nhật giỏ hàng');
+      console.error('Error updating cart item:', error);
+      if (error.response) {
+        console.error('Server response:', error.response.data);
+        // Trả về thông báo lỗi chi tiết hơn
+        const errorMessage = error.response.data.detail
+          ? (Array.isArray(error.response.data.detail)
+            ? error.response.data.detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join(', ')
+            : error.response.data.detail)
+          : 'Không thể cập nhật giỏ hàng';
+        throw new Error(errorMessage);
+      }
+      throw new Error('Không thể cập nhật giỏ hàng');
     }
   },
 

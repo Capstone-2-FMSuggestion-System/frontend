@@ -206,14 +206,16 @@ const OrderList = () => {
   });
 
   const itemsPerPage = 5;
-  const useMockData = false; // Đặt thành false để sử dụng API thật
 
   const fetchFilterOptions = async () => {
     try {
+      console.log('Fetching filter options...');
       const options = await adminOrderService.getOrderFilterOptions();
+      console.log('Filter options received:', options);
       setFilterOptions(options);
     } catch (err) {
       console.error('Error fetching filter options:', err);
+      setError('Không thể tải tùy chọn lọc. Vui lòng thử lại sau.');
     }
   };
 
@@ -230,15 +232,30 @@ const OrderList = () => {
         month: monthFilter || undefined
       };
 
+      console.log('Fetching orders with params:', params);
       const response = await adminOrderService.getOrders(params);
+      console.log('Orders response:', response);
 
-      setOrders(response.orders);
-      setTotalPages(Math.ceil(response.total / itemsPerPage));
-      setTotalOrders(response.total);
+      if (response && response.orders) {
+        setOrders(response.orders);
+        setTotalPages(Math.ceil(response.total / itemsPerPage));
+        setTotalOrders(response.total);
+      } else {
+        console.error('Invalid response format:', response);
+        setError('Định dạng dữ liệu không hợp lệ');
+      }
 
     } catch (err) {
       console.error('Error fetching orders:', err);
-      setError('Không thể tải danh sách đơn hàng. Vui lòng thử lại sau.');
+      if (err.message.includes('đăng nhập lại')) {
+        setError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        // Redirect to login after a short delay
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+      } else {
+        setError(err.message || 'Không thể tải danh sách đơn hàng. Vui lòng thử lại sau.');
+      }
     } finally {
       setTimeout(() => {
         setLoading(false);
@@ -284,7 +301,7 @@ const OrderList = () => {
         <TitleGroup>
           <Title>Đơn hàng ({totalOrders})</Title>
           <Description>
-            Quản lý sản phẩm và theo dõi việc bổ sung hàng tại đây.
+            Quản lý đơn hàng và theo dõi trạng thái giao hàng tại đây.
           </Description>
         </TitleGroup>
       </Header>

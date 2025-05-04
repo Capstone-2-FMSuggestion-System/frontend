@@ -9,6 +9,8 @@ import CartSummary from '../../components/cart/CartSummary/CartSummary';
 import { CartContext } from '../../context/CartContext';
 import { AuthContext } from '../../context/AuthContext';
 import orderService from '../../services/orderService';
+import zaloPayService from '../../services/zaloPayService';
+import { toast } from 'react-hot-toast';
 
 const CheckoutContainer = styled.div`
   max-width: 1200px;
@@ -148,14 +150,14 @@ const Checkout = () => {
   const { currentUser } = useContext(AuthContext);
   const { cart, clearCart } = useContext(CartContext);
   const navigate = useNavigate();
-  
+
   useEffect(() => {
     // Redirect to cart if cart is empty
     if (cart.items.length === 0) {
       navigate('/cart');
     }
   }, [cart.items.length, navigate]);
-  
+
   const initialValues = {
     firstName: currentUser?.firstName || '',
     lastName: currentUser?.lastName || '',
@@ -171,7 +173,7 @@ const Checkout = () => {
     cardCvv: '',
     notes: ''
   };
-  
+
   const validationSchema = Yup.object({
     firstName: Yup.string().required('First name is required'),
     lastName: Yup.string().required('Last name is required'),
@@ -198,11 +200,36 @@ const Checkout = () => {
       then: () => Yup.string().required('CVV is required')
     })
   });
-  
+
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
+      console.log('Starting order submission...');
+      console.log('Current user:', currentUser);
+
+      if (!currentUser?.user_id) {
+        console.log('No user ID found, showing error message');
+        toast.error('Vui lòng đăng nhập để tiếp tục');
+        return;
+      }
+
+      // Calculate shipping fee
+      const shippingFee = cart.totalAmount > 200000 ? 0 : 20000;
+
+      // Calculate total amount
+      const subtotal = cart.totalAmount;
+      const discount = cart.discount || 0;
+      const total = subtotal + shippingFee - discount;
+
+      console.log('Cart details:', {
+        subtotal,
+        shippingFee,
+        discount,
+        total
+      });
+
       // Prepare order data
       const orderData = {
+        user_id: currentUser.user_id,
         customer: {
           firstName: values.firstName,
           lastName: values.lastName,
@@ -221,32 +248,60 @@ const Checkout = () => {
         })),
         paymentMethod: values.paymentMethod,
         notes: values.notes,
-        subtotal: cart.totalAmount,
-        shipping: cart.totalAmount > 200000 ? 0 : 20000,
-        discount: 0,
-        total: cart.totalAmount + (cart.totalAmount > 200000 ? 0 : 20000)
+        subtotal: subtotal,
+        shipping: shippingFee,
+        discount: discount,
+        total: total
       };
-      
-      // Create order
-      const order = await orderService.createOrder(orderData);
-      
+
+      console.log('Submitting order data:', orderData);
+
+      let order;
+      if (values.paymentMethod === 'cod') {
+        console.log('Creating COD order...');
+        order = await orderService.createOrder(orderData);
+        console.log('COD order created:', order);
+      } else if (values.paymentMethod.startsWith('zalopay')) {
+        console.log('Creating ZaloPay order...');
+        order = await zaloPayService.createOrder(orderData);
+        console.log('ZaloPay order created:', order);
+        // Redirect to ZaloPay payment page
+        if (order.order_url) {
+          window.location.href = order.order_url;
+          return;
+        }
+      }
+
+      console.log('Order created successfully, clearing cart...');
       // Clear cart
       clearCart();
-      
-      // Redirect to success page
-      navigate('/payment-success', { state: { order } });
+
+      console.log('Redirecting to success page with order:', order);
+      // Redirect to success page with complete order data
+      navigate('/payment-success', {
+        state: {
+          order: {
+            ...order,
+            total: total,
+            paymentMethod: values.paymentMethod,
+            id: order.id || order.order_id
+          }
+        }
+      });
     } catch (error) {
-      console.error('Failed to create order:', error);
+      console.error('Failed to process order:', error);
+      // Show error message to user
+      toast.error(error.response?.data?.message || 'Có lỗi xảy ra khi xử lý đơn hàng. Vui lòng thử lại sau.');
     } finally {
       setSubmitting(false);
     }
   };
-  
+
   return (
     <MainLayout>
       <CheckoutContainer>
         <CheckoutTitle>Checkout</CheckoutTitle>
-        
+
         <Formik
           initialValues={initialValues}
           validationSchema={validationSchema}
@@ -257,160 +312,115 @@ const Checkout = () => {
               <CheckoutContent>
                 <CheckoutForm>
                   <SectionTitle>Shipping Information</SectionTitle>
-                  
+
                   <FormRow cols={2}>
                     <FormGroup>
                       <Label htmlFor="firstName">First Name</Label>
                       <Input type="text" id="firstName" name="firstName" />
                       <ErrorMessage name="firstName" component={ErrorText} />
                     </FormGroup>
-                    
+
                     <FormGroup>
                       <Label htmlFor="lastName">Last Name</Label>
                       <Input type="text" id="lastName" name="lastName" />
                       <ErrorMessage name="lastName" component={ErrorText} />
                     </FormGroup>
                   </FormRow>
-                  
+
                   <FormRow cols={2}>
                     <FormGroup>
                       <Label htmlFor="email">Email</Label>
                       <Input type="email" id="email" name="email" />
                       <ErrorMessage name="email" component={ErrorText} />
                     </FormGroup>
-                    
+
                     <FormGroup>
                       <Label htmlFor="phone">Phone</Label>
                       <Input type="tel" id="phone" name="phone" />
                       <ErrorMessage name="phone" component={ErrorText} />
                     </FormGroup>
                   </FormRow>
-                  
+
                   <FormGroup>
                     <Label htmlFor="address">Address</Label>
                     <Input type="text" id="address" name="address" />
                     <ErrorMessage name="address" component={ErrorText} />
                   </FormGroup>
-                  
+
                   <FormRow cols={2}>
                     <FormGroup>
                       <Label htmlFor="city">City</Label>
                       <Input type="text" id="city" name="city" />
                       <ErrorMessage name="city" component={ErrorText} />
                     </FormGroup>
-                    
+
                     <FormGroup>
                       <Label htmlFor="zipCode">ZIP Code</Label>
                       <Input type="text" id="zipCode" name="zipCode" />
                       <ErrorMessage name="zipCode" component={ErrorText} />
                     </FormGroup>
                   </FormRow>
-                  
+
                   <SectionTitle>Payment Method</SectionTitle>
-                  
+
                   <FormGroup>
                     <RadioGroup>
                       <RadioOption>
-                        <Field 
-                          type="radio" 
-                          name="paymentMethod" 
-                          value="cod" 
+                        <Field
+                          type="radio"
+                          name="paymentMethod"
+                          value="cod"
                           checked={values.paymentMethod === 'cod'}
                           onChange={() => {
                             setFieldValue('paymentMethod', 'cod');
                             setSelectedPayment('cod');
                           }}
                         />
-                        Cash on Delivery (COD)
+                        Thanh toán khi nhận hàng (COD)
                       </RadioOption>
-                      
+
                       <RadioOption>
-                        <Field 
-                          type="radio" 
-                          name="paymentMethod" 
-                          value="card"
-                          checked={values.paymentMethod === 'card'}
+                        <Field
+                          type="radio"
+                          name="paymentMethod"
+                          value="zalopay"
+                          checked={values.paymentMethod === 'zalopay'}
                           onChange={() => {
-                            setFieldValue('paymentMethod', 'card');
-                            setSelectedPayment('card');
+                            setFieldValue('paymentMethod', 'zalopay');
+                            setSelectedPayment('zalopay');
                           }}
                         />
-                        Credit/Debit Card
-                      </RadioOption>
-                      
-                      <RadioOption>
-                        <Field 
-                          type="radio" 
-                          name="paymentMethod" 
-                          value="bank"
-                          checked={values.paymentMethod === 'bank'}
-                          onChange={() => {
-                            setFieldValue('paymentMethod', 'bank');
-                            setSelectedPayment('bank');
-                          }}
-                        />
-                        Bank Transfer
+                        Thanh toán qua ZaloPay
                       </RadioOption>
                     </RadioGroup>
-                    
-                    <PaymentDetails visible={selectedPayment === 'card'}>
-                      <FormGroup>
-                        <Label htmlFor="cardNumber">Card Number</Label>
-                        <Input type="text" id="cardNumber" name="cardNumber" placeholder="XXXX XXXX XXXX XXXX" />
-                        <ErrorMessage name="cardNumber" component={ErrorText} />
-                      </FormGroup>
-                      
-                      <FormGroup>
-                        <Label htmlFor="cardName">Name on Card</Label>
-                        <Input type="text" id="cardName" name="cardName" />
-                        <ErrorMessage name="cardName" component={ErrorText} />
-                      </FormGroup>
-                      
-                      <FormRow cols={2}>
-                        <FormGroup>
-                          <Label htmlFor="cardExpiry">Expiry Date</Label>
-                          <Input type="text" id="cardExpiry" name="cardExpiry" placeholder="MM/YY" />
-                          <ErrorMessage name="cardExpiry" component={ErrorText} />
-                        </FormGroup>
-                        
-                        <FormGroup>
-                          <Label htmlFor="cardCvv">CVV</Label>
-                          <Input type="text" id="cardCvv" name="cardCvv" placeholder="123" />
-                          <ErrorMessage name="cardCvv" component={ErrorText} />
-                        </FormGroup>
-                      </FormRow>
-                    </PaymentDetails>
-                    
-                    <PaymentDetails visible={selectedPayment === 'bank'}>
-                      <p>Please transfer the amount to the following bank account:</p>
-                      <p><strong>Account Name:</strong> SM Food Store</p>
-                      <p><strong>Account Number:</strong> 9353538222</p>
-                      <p><strong>Bank:</strong> Vietcombank</p>
-                      <p>After making the payment, please send the transfer details to support@sm.com</p>
+
+                    <PaymentDetails visible={selectedPayment === 'zalopay'}>
+                      <p>Bạn sẽ được chuyển hướng đến cổng thanh toán ZaloPay để hoàn tất giao dịch.</p>
+                      <p>Vui lòng không đóng cửa sổ trình duyệt cho đến khi thanh toán hoàn tất.</p>
                     </PaymentDetails>
                   </FormGroup>
-                  
+
                   <FormGroup>
                     <Label htmlFor="notes">Order Notes (Optional)</Label>
-                    <TextArea 
-                      as="textarea" 
-                      id="notes" 
-                      name="notes" 
+                    <TextArea
+                      as="textarea"
+                      id="notes"
+                      name="notes"
                       placeholder="Special instructions for delivery"
                     />
                   </FormGroup>
-                  
-                  <OrderButton 
-                    type="submit" 
-                    variant="secondary" 
-                    size="large" 
-                    fullWidth 
+
+                  <OrderButton
+                    type="submit"
+                    variant="secondary"
+                    size="large"
+                    fullWidth
                     disabled={isSubmitting}
                   >
                     Place Order
                   </OrderButton>
                 </CheckoutForm>
-                
+
                 <CartSummary />
               </CheckoutContent>
             </Form>

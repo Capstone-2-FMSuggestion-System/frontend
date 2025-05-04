@@ -71,60 +71,71 @@ const ButtonGroup = styled.div`
 const PaymentSuccess = () => {
   const location = useLocation();
   const order = location.state?.order || {};
-  
+
+  const getPaymentMethodText = (method) => {
+    switch (method) {
+      case 'zalopay':
+        return 'Thanh toán qua ZaloPay';
+      case 'cod':
+        return 'Thanh toán khi nhận hàng (COD)';
+      default:
+        return method;
+    }
+  };
+
   return (
     <MainLayout>
       <Container>
         <SuccessIcon>
           <FaCheckCircle />
         </SuccessIcon>
-        
-        <Title>Thank You for Your Order!</Title>
-        
+
+        <Title>Cảm ơn bạn đã đặt hàng!</Title>
+
         <Message>
-          Your order has been placed successfully. We've sent a confirmation email with all the details.
-          We'll process your order as soon as possible.
+          Đơn hàng của bạn đã được đặt thành công. Chúng tôi đã gửi email xác nhận với tất cả thông tin chi tiết.
+          Chúng tôi sẽ xử lý đơn hàng của bạn trong thời gian sớm nhất.
         </Message>
-        
+
         <OrderInfo>
           <OrderDetail>
-            <span>Order Number:</span>
+            <span>Mã đơn hàng:</span>
             <span>#{order.id || '12345678'}</span>
           </OrderDetail>
-          
+
           <OrderDetail>
-            <span>Date:</span>
-            <span>{new Date().toLocaleDateString()}</span>
+            <span>Ngày đặt:</span>
+            <span>{new Date().toLocaleDateString('vi-VN')}</span>
           </OrderDetail>
-          
+
           <OrderDetail>
-            <span>Payment Method:</span>
-            <span>{order.paymentMethod || 'Cash on Delivery'}</span>
+            <span>Phương thức thanh toán:</span>
+            <span>{getPaymentMethodText(order.paymentMethod)}</span>
           </OrderDetail>
-          
+
           <OrderDetail>
-            <span>Total:</span>
-            <span>{order.total ? `${order.total}đ` : '₫500,000'}</span>
+            <span>Tổng tiền:</span>
+            <span>{order.total ? `${order.total.toLocaleString('vi-VN')}đ` : '0đ'}</span>
           </OrderDetail>
         </OrderInfo>
-        
+
         <ButtonGroup>
-          <Button 
-            variant="primary" 
-            as={Link} 
+          <Button
+            variant="primary"
+            as={Link}
             to="/orders"
             leftIcon={<FaListAlt />}
           >
-            View My Orders
+            Xem đơn hàng của tôi
           </Button>
-          
-          <Button 
-            variant="outline" 
-            as={Link} 
+
+          <Button
+            variant="outline"
+            as={Link}
             to="/"
             leftIcon={<FaHome />}
           >
-            Continue Shopping
+            Tiếp tục mua sắm
           </Button>
         </ButtonGroup>
       </Container>

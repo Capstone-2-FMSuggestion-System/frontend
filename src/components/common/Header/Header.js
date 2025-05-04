@@ -31,13 +31,32 @@ const TopBar = styled.div`
 `;
 
 const Logo = styled.div`
+  display: flex;
+  align-items: center;
   flex: 0 0 auto;
-  margin-right: 15px;
-  
+  margin-right: 24px;
+  padding: 6px 0;
+
   img {
-    height: 45px;
+    height: 40px;
+    max-height: 100%;
+    object-fit: contain;
+    transition: transform 0.3s ease;
+
+    &:hover {
+      transform: scale(1.05);
+    }
+  }
+
+  @media (max-width: 768px) {
+    margin-right: 16px;
+
+    img {
+      height: 32px;
+    }
   }
 `;
+
 
 const SearchContainer = styled.div`
   display: flex;
@@ -85,7 +104,7 @@ const SearchButton = styled.button`
 const ContactInfo = styled.div`
   display: flex;
   align-items: center;
-  margin-left: auto;
+  margin-left: 30px;
   margin-right: 20px;
   font-size: 0.9rem;
   color: #666;
@@ -109,7 +128,7 @@ const ActionItems = styled.div`
 const ActionButton = styled(Link)`
   display: flex;
   align-items: center;
-  margin-left: 25px;
+  margin-left: 40px;
   color: #333;
   text-decoration: none;
   font-weight: 500;

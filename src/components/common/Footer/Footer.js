@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { FaFacebook, FaMapMarkerAlt, FaPhone, FaEnvelope, FaCreditCard } from 'react-icons/fa';
+import { FaFacebook, FaMapMarkerAlt, FaPhone, FaEnvelope, FaCcVisa, FaCcPaypal, FaCcMastercard, FaGooglePay } from 'react-icons/fa';
 import logo from '../../../assets/images/logo.png';
 
 const FooterContainer = styled.footer`
@@ -71,13 +71,22 @@ const ContactItem = styled.div`
 
 const PaymentMethods = styled.div`
   display: flex;
-  gap: 10px;
-  margin-top: 15px;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+
   svg {
-    font-size: 24px;
-    color: #666;
+    font-size: 28px;
+    color: #555;
+    transition: transform 0.2s ease, color 0.2s ease;
+
+    &:hover {
+      transform: scale(1.2);
+      color: #000;
+    }
   }
 `;
+
 
 const Newsletter = styled.div`
   margin-top: 15px;
@@ -120,10 +129,10 @@ const Footer = () => {
           <img src={logo} alt="SM Food Store" />
           <p>Lorem ipsum dolor sit amet consectetur. Maecenada duis lorem mi mattis.</p>
           <PaymentMethods>
-            <FaCreditCard /> {/* Thay thế FaVisa */}
-            <FaCreditCard /> {/* Thay thế FaPaypal */}
-            <FaCreditCard /> {/* Thay thế FaMastercard */}
-            <FaCreditCard /> {/* Thay thế FaGooglePay */}
+            <FaCcVisa /> {/* Thay thế FaVisa */}
+            <FaCcPaypal /> {/* Thay thế FaPaypal */}
+            <FaCcMastercard /> {/* Thay thế FaMastercard */}
+            <FaGooglePay /> {/* Thay thế FaGooglePay */}
           </PaymentMethods>
         </LogoSection>
 

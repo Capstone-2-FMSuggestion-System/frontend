@@ -1,8 +1,25 @@
 import api from './api';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+
+export const getFeaturedProducts = async () => {
+  try {
+    const response = await api.get(`/api/e-commerce/categories`, {
+      params: {
+        is_featured: true,
+        limit: 6
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching featured products:', error);
+    throw error;
+  }
+};
+
 export const getAllCategories = async () => {
   try {
-    const response = await api.get('/api/e-commerce/categories');
+    const response = await api.get(`/api/e-commerce/categories`);
     return response.data;
   } catch (error) {
     console.error('Error fetching categories:', error);
@@ -10,12 +27,12 @@ export const getAllCategories = async () => {
   }
 };
 
-export const getCategoryById = async (categoryId) => {
+export const getCategoryById = async (id) => {
   try {
-    const response = await api.get(`/api/e-commerce/categories/${categoryId}`);
+    const response = await api.get(`/api/e-commerce/categories/${id}`);
     return response.data;
   } catch (error) {
-    console.error(`Error fetching category ${categoryId}:`, error);
+    console.error(`Error fetching category ${id}:`, error);
     throw error;
   }
 };
@@ -32,7 +49,7 @@ export const getSubcategories = async (categoryId) => {
 
 export const getCategoriesTree = async (forceRefresh = false) => {
   try {
-    const response = await api.get('/api/e-commerce/categories-tree', {
+    const response = await api.get(`/api/e-commerce/categories-tree`, {
       params: { force_refresh: forceRefresh }
     });
     return response.data;
@@ -45,9 +62,11 @@ export const getCategoriesTree = async (forceRefresh = false) => {
 // Admin Services
 export const getAdminCategories = async (skip = 0, limit = 50) => {
   try {
-    const response = await api.get('/api/admin/manage/categories', {
+    console.log('Fetching admin categories with params:', { skip, limit });
+    const response = await api.get(`/api/admin/manage/categories`, {
       params: { skip, limit }
     });
+    console.log('Admin categories response:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error fetching admin categories:', error);
@@ -67,7 +86,7 @@ export const getAdminCategoryById = async (categoryId) => {
 
 export const createCategory = async (categoryData) => {
   try {
-    const response = await api.post('/api/admin/manage/categories', categoryData);
+    const response = await api.post(`/api/admin/manage/categories`, categoryData);
     return response.data;
   } catch (error) {
     console.error('Error creating category:', error);
