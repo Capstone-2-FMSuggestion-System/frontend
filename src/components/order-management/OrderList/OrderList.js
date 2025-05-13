@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import OrderItem from '../OrderItem/OrderItem';
 import Pagination from '../../common/Pagination/Pagination';
+import orderService from '../../../services/orderService';
 
 const OrderListContainer = styled.div`
   margin-bottom: 30px;
@@ -55,7 +56,33 @@ const LoadingContainer = styled.div`
   animation: pulse 1.5s infinite ease-in-out;
 `;
 
-const OrderList = ({ orders, loading, currentPage, totalPages, onPageChange, emptyIcon }) => {
+const OrderList = ({ orders: ordersProp, loading, currentPage, totalPages, onPageChange, emptyIcon }) => {
+  const [orders, setOrders] = useState(ordersProp || []);
+
+  useEffect(() => {
+    setOrders(ordersProp || []);
+  }, [ordersProp]);
+
+  const handleCancelOrder = async (orderId) => {
+    if (!window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')) return;
+    try {
+      await orderService.cancelOrder(orderId);
+      setOrders(prev => prev.map(order => order.id === orderId ? { ...order, status: 'cancelled' } : order));
+    } catch (err) {
+      alert('Hủy đơn hàng thất bại!');
+    }
+  };
+
+  const handleConfirmReceived = async (orderId) => {
+    if (!window.confirm('Bạn xác nhận đã nhận được hàng?')) return;
+    try {
+      await orderService.updateOrderStatus(orderId, 'delivered');
+      setOrders(prev => prev.map(order => order.id === orderId ? { ...order, status: 'delivered' } : order));
+    } catch (err) {
+      alert('Xác nhận nhận hàng thất bại!');
+    }
+  };
+
   if (loading) {
     return (
       <OrderListContainer>
@@ -65,7 +92,7 @@ const OrderList = ({ orders, loading, currentPage, totalPages, onPageChange, emp
       </OrderListContainer>
     );
   }
-  
+
   if (!orders || orders.length === 0) {
     return (
       <OrderListContainer>
@@ -77,13 +104,13 @@ const OrderList = ({ orders, loading, currentPage, totalPages, onPageChange, emp
       </OrderListContainer>
     );
   }
-  
+
   return (
     <OrderListContainer>
       {orders.map(order => (
-        <OrderItem key={order.id} order={order} />
+        <OrderItem key={order.id} order={order} onCancelOrder={handleCancelOrder} onConfirmReceived={handleConfirmReceived} />
       ))}
-      
+
       {totalPages > 1 && (
         <Pagination
           currentPage={currentPage}

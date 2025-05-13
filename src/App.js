@@ -1,8 +1,6 @@
 // src/App.js
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import { QueryClient, QueryClientProvider } from 'react-query';
 
 // Context Providers
@@ -49,6 +47,7 @@ import AdminOrders from './pages/admin/OrderList';
 import AdminOrdersSimple from './pages/admin/OrderListSimple';
 import AdminCategories from './pages/admin/CategoryList';
 import NotFound from './pages/NotFound';
+import About from './pages/About';
 import './App.css';
 
 const queryClient = new QueryClient();
@@ -59,11 +58,10 @@ const App = () => {
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <CartProvider>
-              <CategoryProvider>
-                <ChatProvider>
-                  <ToastProvider>
-                    <ToastContainer position="top-right" autoClose={3000} />
+            <ToastProvider>
+              <CartProvider>
+                <CategoryProvider>
+                  <ChatProvider>
                     <Routes>
                       {/* Public Routes */}
                       <Route path="/" element={<Home />} />
@@ -74,7 +72,8 @@ const App = () => {
                       <Route path="/product/:id" element={<ProductDetail />} />
                       <Route path="/search" element={<SearchResults />} />
                       <Route path="/cart" element={<Cart />} />
-                      
+                      <Route path="/about" element={<About />} />
+
                       {/* Auth Routes */}
                       <Route path="/login" element={
                         <AuthLayout>
@@ -91,7 +90,12 @@ const App = () => {
                           <ForgotPassword />
                         </AuthLayout>
                       } />
-                      
+                      <Route path="/reset-password/:token" element={
+                        <AuthLayout>
+                          <ResetPassword />
+                        </AuthLayout>
+                      } />
+
                       {/* Protected User Routes */}
                       <Route path="/checkout" element={
                         <PrivateRoute>
@@ -123,7 +127,7 @@ const App = () => {
                           <Wishlist />
                         </PrivateRoute>
                       } />
-                      
+
                       {/* Admin Routes */}
                       <Route path="/admin" element={
                         <AdminRoute>
@@ -155,17 +159,17 @@ const App = () => {
                           <AdminCategories />
                         </AdminRoute>
                       } />
-                      
+
                       {/* 404 Route */}
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                     <ChatButton />
                     <ChatWindow />
                     <ProductSelector />
-                  </ToastProvider>
-                </ChatProvider>
-              </CategoryProvider>
-            </CartProvider>
+                  </ChatProvider>
+                </CategoryProvider>
+              </CartProvider>
+            </ToastProvider>
           </AuthProvider>
         </QueryClientProvider>
       </ThemeProvider>

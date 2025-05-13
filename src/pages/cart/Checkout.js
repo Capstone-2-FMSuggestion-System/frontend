@@ -9,6 +9,9 @@ import CartSummary from '../../components/cart/CartSummary/CartSummary';
 import { CartContext } from '../../context/CartContext';
 import { AuthContext } from '../../context/AuthContext';
 import orderService from '../../services/orderService';
+import payosService from '../../services/payosService';
+import { toast } from 'react-hot-toast';
+import { FaCreditCard, FaMoneyBillWave, FaInfoCircle } from 'react-icons/fa';
 
 const CheckoutContainer = styled.div`
   max-width: 1200px;
@@ -125,9 +128,39 @@ const RadioOption = styled.label`
   align-items: center;
   margin-bottom: 10px;
   cursor: pointer;
+  padding: 12px;
+  border: 1px solid ${props => props.selected ? '#4CAF50' : '#ddd'};
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    border-color: #4CAF50;
+    background-color: #f9f9f9;
+  }
   
   input {
     margin-right: 10px;
+  }
+`;
+
+const PaymentIcon = styled.div`
+  margin-right: 12px;
+  font-size: 1.5rem;
+  color: ${props => props.color || '#333'};
+`;
+
+const PaymentInfo = styled.div`
+  flex: 1;
+  
+  h4 {
+    margin: 0 0 5px 0;
+    font-size: 1rem;
+  }
+  
+  p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #666;
   }
 `;
 
@@ -143,19 +176,39 @@ const OrderButton = styled(Button)`
   margin-top: 20px;
 `;
 
+const InfoMessage = styled.div`
+  background-color: #f8f9fa;
+  border-left: 4px solid #4CAF50;
+  padding: 10px 15px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: flex-start;
+  
+  svg {
+    margin-right: 10px;
+    margin-top: 2px;
+    color: #4CAF50;
+  }
+  
+  p {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+`;
+
 const Checkout = () => {
   const [selectedPayment, setSelectedPayment] = useState('cod');
   const { currentUser } = useContext(AuthContext);
   const { cart, clearCart } = useContext(CartContext);
   const navigate = useNavigate();
-  
+
   useEffect(() => {
     // Redirect to cart if cart is empty
     if (cart.items.length === 0) {
       navigate('/cart');
     }
   }, [cart.items.length, navigate]);
-  
+
   const initialValues = {
     firstName: currentUser?.firstName || '',
     lastName: currentUser?.lastName || '',
@@ -171,7 +224,7 @@ const Checkout = () => {
     cardCvv: '',
     notes: ''
   };
-  
+
   const validationSchema = Yup.object({
     firstName: Yup.string().required('First name is required'),
     lastName: Yup.string().required('Last name is required'),
@@ -198,55 +251,109 @@ const Checkout = () => {
       then: () => Yup.string().required('CVV is required')
     })
   });
-  
+
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
-      // Prepare order data
+      console.log('Starting order submission...');
+      console.log('Current user:', currentUser);
+
+      if (!currentUser?.user_id) {
+        console.log('No user ID found, showing error message');
+        toast.error('Vui lòng đăng nhập để tiếp tục');
+        return;
+      }
+
+      // Tính tổng tiền sản phẩm (không cộng phí ship cho PayOS)
+      const subtotal = cart.items.reduce((sum, item) => sum + (Number(item.discountPrice || item.price) || 0) * item.quantity, 0);
+      const discount = Number(cart.discount) || 0;
+      let shippingFee = 0;
+      let total = subtotal;
+      if (values.paymentMethod === 'cod') {
+        shippingFee = cart.totalAmount > 200000 ? 0 : 20000;
+        total = subtotal + shippingFee - discount;
+      }
+
+      console.log('Cart details:', {
+        subtotal,
+        shippingFee,
+        discount,
+        total
+      });
+
+      // Prepare cart items in the format backend expects
+      const cartItems = cart.items.map(item => ({
+        product_id: item.id,
+        quantity: item.quantity,
+        price: Number(item.discountPrice || item.price) || 0
+      }));
+
+      // Prepare order data theo phương thức thanh toán
       const orderData = {
-        customer: {
-          firstName: values.firstName,
-          lastName: values.lastName,
-          email: values.email,
-          phone: values.phone
-        },
-        shippingAddress: {
-          address: values.address,
-          city: values.city,
-          zipCode: values.zipCode
-        },
-        orderItems: cart.items.map(item => ({
-          productId: item.id,
-          quantity: item.quantity,
-          price: item.discountPrice || item.price
-        })),
-        paymentMethod: values.paymentMethod,
-        notes: values.notes,
-        subtotal: cart.totalAmount,
-        shipping: cart.totalAmount > 200000 ? 0 : 20000,
-        discount: 0,
-        total: cart.totalAmount + (cart.totalAmount > 200000 ? 0 : 20000)
+        user_id: currentUser.user_id,
+        total_amount: total,
+        payment_method: values.paymentMethod === 'cod' ? 'COD' : 'payos',
+        items: cartItems,
+        status: 'pending',
+        recipient_name: `${values.firstName} ${values.lastName}`,
+        recipient_phone: values.phone,
+        shipping_address: values.address,
+        shipping_city: values.city,
+        shipping_province: values.province || '',
+        shipping_postal_code: values.zipCode
       };
-      
-      // Create order
-      const order = await orderService.createOrder(orderData);
-      
-      // Clear cart
-      clearCart();
-      
-      // Redirect to success page
-      navigate('/payment-success', { state: { order } });
+
+      console.log('Submitting order data:', orderData);
+
+      let order;
+      if (values.paymentMethod === 'cod') {
+        console.log('Creating COD order...');
+        // Gọi API tạo đơn hàng COD
+        order = await orderService.createOrder(orderData);
+        console.log('COD order created:', order);
+
+        // Xóa giỏ hàng
+        clearCart();
+
+        // Chuyển đến trang thành công
+        navigate('/payment-success', {
+          state: {
+            order: {
+              ...order,
+              total: total,
+              paymentMethod: 'COD',
+              id: order.order_id || order.id
+            }
+          }
+        });
+      } else if (values.paymentMethod === 'payos') {
+        console.log('Creating PayOS order...');
+        // Gọi API thanh toán PayOS
+        const payosResponse = await payosService.createOrder(orderData);
+        console.log('PayOS order created:', payosResponse);
+
+        if (payosResponse && payosResponse.payment_url) {
+          // Nếu có URL thanh toán, chuyển hướng người dùng đến trang thanh toán
+          window.location.href = payosResponse.payment_url;
+        } else {
+          throw new Error('Không nhận được URL thanh toán từ PayOS');
+        }
+      } else {
+        throw new Error('Phương thức thanh toán không hợp lệ');
+      }
     } catch (error) {
-      console.error('Failed to create order:', error);
+      console.error('Failed to process order:', error);
+      // Hiển thị thông báo lỗi
+      toast.error(error.message || 'Có lỗi xảy ra khi xử lý đơn hàng. Vui lòng thử lại sau.');
     } finally {
       setSubmitting(false);
     }
   };
-  
+
   return (
     <MainLayout>
       <CheckoutContainer>
         <CheckoutTitle>Checkout</CheckoutTitle>
-        
+
         <Formik
           initialValues={initialValues}
           validationSchema={validationSchema}
@@ -257,160 +364,136 @@ const Checkout = () => {
               <CheckoutContent>
                 <CheckoutForm>
                   <SectionTitle>Shipping Information</SectionTitle>
-                  
+
                   <FormRow cols={2}>
                     <FormGroup>
                       <Label htmlFor="firstName">First Name</Label>
                       <Input type="text" id="firstName" name="firstName" />
                       <ErrorMessage name="firstName" component={ErrorText} />
                     </FormGroup>
-                    
+
                     <FormGroup>
                       <Label htmlFor="lastName">Last Name</Label>
                       <Input type="text" id="lastName" name="lastName" />
                       <ErrorMessage name="lastName" component={ErrorText} />
                     </FormGroup>
                   </FormRow>
-                  
+
                   <FormRow cols={2}>
                     <FormGroup>
                       <Label htmlFor="email">Email</Label>
                       <Input type="email" id="email" name="email" />
                       <ErrorMessage name="email" component={ErrorText} />
                     </FormGroup>
-                    
+
                     <FormGroup>
                       <Label htmlFor="phone">Phone</Label>
                       <Input type="tel" id="phone" name="phone" />
                       <ErrorMessage name="phone" component={ErrorText} />
                     </FormGroup>
                   </FormRow>
-                  
+
                   <FormGroup>
                     <Label htmlFor="address">Address</Label>
                     <Input type="text" id="address" name="address" />
                     <ErrorMessage name="address" component={ErrorText} />
                   </FormGroup>
-                  
+
                   <FormRow cols={2}>
                     <FormGroup>
                       <Label htmlFor="city">City</Label>
                       <Input type="text" id="city" name="city" />
                       <ErrorMessage name="city" component={ErrorText} />
                     </FormGroup>
-                    
+
                     <FormGroup>
                       <Label htmlFor="zipCode">ZIP Code</Label>
                       <Input type="text" id="zipCode" name="zipCode" />
                       <ErrorMessage name="zipCode" component={ErrorText} />
                     </FormGroup>
                   </FormRow>
-                  
-                  <SectionTitle>Payment Method</SectionTitle>
-                  
+
+                  <SectionTitle>Phương thức thanh toán</SectionTitle>
+
+                  <InfoMessage>
+                    <FaInfoCircle />
+                    <p>Vui lòng chọn một trong hai phương thức thanh toán dưới đây để hoàn tất đơn hàng.</p>
+                  </InfoMessage>
+
                   <FormGroup>
                     <RadioGroup>
-                      <RadioOption>
-                        <Field 
-                          type="radio" 
-                          name="paymentMethod" 
-                          value="cod" 
+                      <RadioOption selected={values.paymentMethod === 'cod'}>
+                        <Field
+                          type="radio"
+                          name="paymentMethod"
+                          value="cod"
                           checked={values.paymentMethod === 'cod'}
                           onChange={() => {
                             setFieldValue('paymentMethod', 'cod');
                             setSelectedPayment('cod');
                           }}
                         />
-                        Cash on Delivery (COD)
+                        <PaymentIcon color="#ffc107">
+                          <FaMoneyBillWave />
+                        </PaymentIcon>
+                        <PaymentInfo>
+                          <h4>Thanh toán khi nhận hàng (COD)</h4>
+                          <p>Bạn sẽ thanh toán bằng tiền mặt khi nhận hàng</p>
+                        </PaymentInfo>
                       </RadioOption>
-                      
-                      <RadioOption>
-                        <Field 
-                          type="radio" 
-                          name="paymentMethod" 
-                          value="card"
-                          checked={values.paymentMethod === 'card'}
+
+                      <RadioOption selected={values.paymentMethod === 'payos'}>
+                        <Field
+                          type="radio"
+                          name="paymentMethod"
+                          value="payos"
+                          checked={values.paymentMethod === 'payos'}
                           onChange={() => {
-                            setFieldValue('paymentMethod', 'card');
-                            setSelectedPayment('card');
+                            setFieldValue('paymentMethod', 'payos');
+                            setSelectedPayment('payos');
                           }}
                         />
-                        Credit/Debit Card
-                      </RadioOption>
-                      
-                      <RadioOption>
-                        <Field 
-                          type="radio" 
-                          name="paymentMethod" 
-                          value="bank"
-                          checked={values.paymentMethod === 'bank'}
-                          onChange={() => {
-                            setFieldValue('paymentMethod', 'bank');
-                            setSelectedPayment('bank');
-                          }}
-                        />
-                        Bank Transfer
+                        <PaymentIcon color="#2196f3">
+                          <FaCreditCard />
+                        </PaymentIcon>
+                        <PaymentInfo>
+                          <h4>Thanh toán online qua PayOS</h4>
+                          <p>Thanh toán an toàn bằng thẻ ATM, VISA, MasterCard và các ví điện tử</p>
+                        </PaymentInfo>
                       </RadioOption>
                     </RadioGroup>
-                    
-                    <PaymentDetails visible={selectedPayment === 'card'}>
-                      <FormGroup>
-                        <Label htmlFor="cardNumber">Card Number</Label>
-                        <Input type="text" id="cardNumber" name="cardNumber" placeholder="XXXX XXXX XXXX XXXX" />
-                        <ErrorMessage name="cardNumber" component={ErrorText} />
-                      </FormGroup>
-                      
-                      <FormGroup>
-                        <Label htmlFor="cardName">Name on Card</Label>
-                        <Input type="text" id="cardName" name="cardName" />
-                        <ErrorMessage name="cardName" component={ErrorText} />
-                      </FormGroup>
-                      
-                      <FormRow cols={2}>
-                        <FormGroup>
-                          <Label htmlFor="cardExpiry">Expiry Date</Label>
-                          <Input type="text" id="cardExpiry" name="cardExpiry" placeholder="MM/YY" />
-                          <ErrorMessage name="cardExpiry" component={ErrorText} />
-                        </FormGroup>
-                        
-                        <FormGroup>
-                          <Label htmlFor="cardCvv">CVV</Label>
-                          <Input type="text" id="cardCvv" name="cardCvv" placeholder="123" />
-                          <ErrorMessage name="cardCvv" component={ErrorText} />
-                        </FormGroup>
-                      </FormRow>
+
+                    <PaymentDetails visible={selectedPayment === 'cod'}>
+                      <p>Bạn sẽ thanh toán khi nhận hàng. Vui lòng chuẩn bị đúng số tiền.</p>
                     </PaymentDetails>
-                    
-                    <PaymentDetails visible={selectedPayment === 'bank'}>
-                      <p>Please transfer the amount to the following bank account:</p>
-                      <p><strong>Account Name:</strong> SM Food Store</p>
-                      <p><strong>Account Number:</strong> 9353538222</p>
-                      <p><strong>Bank:</strong> Vietcombank</p>
-                      <p>After making the payment, please send the transfer details to support@sm.com</p>
+
+                    <PaymentDetails visible={selectedPayment === 'payos'}>
+                      <p>Bạn sẽ được chuyển đến cổng thanh toán PayOS để hoàn tất giao dịch.</p>
+                      <p>Hỗ trợ thanh toán bằng thẻ ATM/VISA/Mastercard và ví điện tử.</p>
                     </PaymentDetails>
                   </FormGroup>
-                  
+
                   <FormGroup>
                     <Label htmlFor="notes">Order Notes (Optional)</Label>
-                    <TextArea 
-                      as="textarea" 
-                      id="notes" 
-                      name="notes" 
+                    <TextArea
+                      as="textarea"
+                      id="notes"
+                      name="notes"
                       placeholder="Special instructions for delivery"
                     />
                   </FormGroup>
-                  
-                  <OrderButton 
-                    type="submit" 
-                    variant="secondary" 
-                    size="large" 
-                    fullWidth 
+
+                  <OrderButton
+                    type="submit"
+                    variant="secondary"
+                    size="large"
+                    fullWidth
                     disabled={isSubmitting}
                   >
                     Place Order
                   </OrderButton>
                 </CheckoutForm>
-                
+
                 <CartSummary />
               </CheckoutContent>
             </Form>

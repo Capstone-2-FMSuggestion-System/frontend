@@ -107,40 +107,85 @@ const OrderTab = () => {
     const fetchOrders = async () => {
       try {
         setLoading(true);
-        const response = await orderService.getUserOrders({
-          page: currentPage,
-          limit: 10,
-          search: searchTerm,
-          status: statusFilter !== 'all' ? statusFilter : undefined
-        });
-        
-        setOrders(response.orders || []);
-        setTotalPages(response.totalPages || 1);
+        // Bước 1: Lấy danh sách đơn hàng
+        const response = await orderService.getUserOrders();
+        console.log('Fetched orders from API:', response);
+
+        if (Array.isArray(response) && response.length > 0) {
+          // Bước 2: Lấy chi tiết từng đơn hàng
+          try {
+            console.log('Fetching order details for each order...');
+            const ordersWithDetails = await Promise.all(
+              response.map(async (order) => {
+                try {
+                  // Gọi API để lấy chi tiết đơn hàng
+                  const orderDetail = await orderService.getOrderById(order.orderId);
+                  console.log(`Chi tiết đơn hàng ${order.orderId}:`, orderDetail);
+
+                  // Cập nhật lại thông tin items từ chi tiết đơn hàng
+                  if (orderDetail && orderDetail.items && orderDetail.items.length > 0) {
+                    return {
+                      ...order,
+                      items: orderDetail.items
+                    };
+                  }
+                  return order;
+                } catch (error) {
+                  console.error(`Lỗi khi lấy chi tiết đơn hàng ${order.orderId}:`, error);
+                  return order;
+                }
+              })
+            );
+            console.log('Orders with details:', ordersWithDetails);
+            setOrders(ordersWithDetails);
+          } catch (error) {
+            console.error('Error fetching order details:', error);
+            setOrders(response);
+          }
+
+          setTotalPages(Math.ceil(response.length / 10));
+        } else {
+          console.error('Invalid orders data:', response);
+          setOrders([]);
+        }
       } catch (error) {
         console.error('Failed to fetch orders:', error);
+        setOrders([]);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchOrders();
-  }, [currentPage, searchTerm, statusFilter]);
-  
+  }, []);
+
   const handlePageChange = (page) => {
     setCurrentPage(page);
   };
-  
+
   const handleSearch = (e) => {
     if (e.key === 'Enter') {
       setCurrentPage(1);
       setSearchTerm(e.target.value);
     }
   };
-  
+
   const handleStatusFilterChange = (e) => {
     setCurrentPage(1);
     setStatusFilter(e.target.value);
   };
+
+  const filteredOrders = orders.filter(order => {
+    const matchesSearch = searchTerm === '' ||
+      (order.orderId && order.orderId.toString().includes(searchTerm)) ||
+      (order.items && order.items.some(item =>
+        item.product_name && item.product_name.toLowerCase().includes(searchTerm.toLowerCase())
+      ));
+
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <Container>
@@ -151,13 +196,15 @@ const OrderTab = () => {
         <SearchFilterContainer>
           <SearchInput>
             <FaSearch />
-            <input 
-              type="text" 
-              placeholder="Tìm kiếm theo mã đơn hàng hoặc sản phẩm" 
+            <input
+              type="text"
+              placeholder="Tìm kiếm theo mã đơn hàng hoặc sản phẩm"
               onKeyDown={handleSearch}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </SearchInput>
-          
+
           <FilterContainer>
             <FaFilter />
             <FilterDropdown value={statusFilter} onChange={handleStatusFilterChange}>
@@ -171,9 +218,9 @@ const OrderTab = () => {
             </FilterDropdown>
           </FilterContainer>
         </SearchFilterContainer>
-        
-        <OrderList 
-          orders={orders}
+
+        <OrderList
+          orders={filteredOrders}
           loading={loading}
           currentPage={currentPage}
           totalPages={totalPages}

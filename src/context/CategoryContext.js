@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import productService from '../services/productService';
+import { getSubcategories } from '../services/productService';
 
 /**
  * CategoryContext
@@ -27,26 +27,66 @@ export const CategoryProvider = ({ children }) => {
   // Thêm state để xác định xem người dùng đang quay lại hay không
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
 
+  // Thêm useEffect để load subcategories khi component mount
+  useEffect(() => {
+    const loadSubcategories = async () => {
+      try {
+        // Lấy tất cả categories
+        const categories = await getSubcategories();
+        if (categories && categories.length > 0) {
+          const newMap = {};
+          // Lấy subcategories cho từng category
+          for (const category of categories) {
+            if (category.category_id) {
+              try {
+                const subcategories = await getSubcategories(category.category_id);
+                if (subcategories && subcategories.length > 0) {
+                  newMap[category.category_id] = subcategories;
+                }
+              } catch (error) {
+                console.error(`Error loading subcategories for category ${category.category_id}:`, error);
+                // Tiếp tục với category tiếp theo nếu có lỗi
+                continue;
+              }
+            }
+          }
+          setSubcategoriesMap(newMap);
+          console.log('CategoryContext: subcategoriesMap updated', newMap);
+        }
+      } catch (error) {
+        console.error('Error loading subcategories:', error);
+      }
+    };
+
+    loadSubcategories();
+  }, []);
+
   // Hàm lấy danh mục con từ API hoặc cache, memoize bằng useCallback
   const fetchSubcategories = useCallback(async (categoryId, forceRefresh = false) => {
     if (!categoryId) {
       console.error('CategoryContext: No categoryId provided to fetchSubcategories');
       return [];
     }
-    
+
+    // Kiểm tra nếu categoryId không phải là số
+    if (isNaN(parseInt(categoryId))) {
+      console.error('CategoryContext: Invalid categoryId provided:', categoryId);
+      return [];
+    }
+
     // Kiểm tra xem đã có dữ liệu trong cache chưa và không yêu cầu refresh
     if (!forceRefresh && subcategoriesMap[categoryId]) {
       console.log('CategoryContext: Using cached subcategories for', categoryId);
       return subcategoriesMap[categoryId];
     }
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       console.log('CategoryContext: Fetching subcategories for', categoryId, forceRefresh ? '(forced)' : '');
-      const data = await productService.getSubcategories(categoryId);
-      
+      const data = await getSubcategories(categoryId);
+
       // Nếu API trả về dữ liệu hợp lệ, lưu vào cache
       if (data && Array.isArray(data) && data.length > 0) {
         console.log(`CategoryContext: Got ${data.length} subcategories for ${categoryId}, saving to cache`);
@@ -57,44 +97,44 @@ export const CategoryProvider = ({ children }) => {
         setLastFetched(Date.now());
         setIsLoading(false);
         return data;
-      } 
+      }
       // Trường hợp API trả về mảng rỗng
       else if (data && Array.isArray(data) && data.length === 0) {
         console.log('CategoryContext: API returned empty array, checking cache');
-        
+
         // Nếu đã có dữ liệu trong cache và không force refresh, ưu tiên sử dụng cache
         if (!forceRefresh && subcategoriesMap[categoryId] && subcategoriesMap[categoryId].length > 0) {
           console.log(`CategoryContext: Using existing ${subcategoriesMap[categoryId].length} items from cache for ${categoryId}`);
           setIsLoading(false);
           return subcategoriesMap[categoryId];
         }
-        
+
         // Tìm trong các cache khác nếu không có dữ liệu cho categoryId hiện tại
         const cachedEntries = Object.entries(subcategoriesMap);
         if (cachedEntries.length > 0) {
           // Tìm danh mục trong cache có nhiều subcategories nhất
           let bestMatch = null;
           let maxSubcategories = 0;
-          
+
           cachedEntries.forEach(([cachedId, subcategories]) => {
             if (subcategories && subcategories.length > maxSubcategories) {
               maxSubcategories = subcategories.length;
               bestMatch = cachedId;
             }
           });
-          
+
           if (bestMatch && subcategoriesMap[bestMatch].length > 0) {
             console.log(`CategoryContext: Using best available data from category ${bestMatch} with ${maxSubcategories} subcategories`);
             return subcategoriesMap[bestMatch];
           }
         }
-        
+
         // Nếu không tìm thấy dữ liệu nào, trả về mảng rỗng
         console.log('CategoryContext: No data found in cache, returning empty array');
         setIsLoading(false);
         return [];
       }
-      
+
       // Trường hợp lỗi hoặc dữ liệu không hợp lệ
       console.warn('CategoryContext: Invalid data returned from API');
       setIsLoading(false);
@@ -103,13 +143,13 @@ export const CategoryProvider = ({ children }) => {
       console.error('Failed to fetch subcategories:', error);
       setError(error.message || 'Không thể lấy danh mục con');
       setIsLoading(false);
-      
+
       // Nếu có lỗi nhưng có dữ liệu trong cache, vẫn trả về dữ liệu cache
       if (subcategoriesMap[categoryId] && subcategoriesMap[categoryId].length > 0) {
         console.log(`CategoryContext: Error occurred but using cached data for ${categoryId}`);
         return subcategoriesMap[categoryId];
       }
-      
+
       return [];
     }
   }, [subcategoriesMap]);

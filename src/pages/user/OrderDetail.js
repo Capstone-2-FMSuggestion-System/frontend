@@ -119,8 +119,6 @@ const OrderStatusContainer = styled.div`
   margin-bottom: 30px;
 `;
 
-
-
 const OrderItems = styled.div`
   margin-top: 20px;
 `;
@@ -156,10 +154,6 @@ const ProductImage = styled.img`
     transform: scale(1.05);
   }
 `;
-
-
-
-
 
 const ActionButtons = styled.div`
   display: flex;
@@ -208,12 +202,13 @@ const OrderDetail = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   useEffect(() => {
     const fetchOrderDetails = async () => {
       try {
         setLoading(true);
         const data = await orderService.getOrderById(id);
+        console.log('Order details fetched:', data);
         setOrder(data);
         setError(null);
       } catch (err) {
@@ -223,12 +218,39 @@ const OrderDetail = () => {
         setLoading(false);
       }
     };
-    
+
     fetchOrderDetails();
   }, [id]);
-  
 
-  
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Chưa cập nhật';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('vi-VN', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Chưa cập nhật';
+    }
+  };
+
+  const formatPaymentMethod = (method) => {
+    if (!method) return 'Chưa cập nhật';
+    const methods = {
+      'cod': 'Thanh toán khi nhận hàng',
+      'bank': 'Chuyển khoản ngân hàng',
+      'momo': 'Ví MoMo',
+      'zalopay': 'Ví ZaloPay',
+      'vnpay': 'VNPay'
+    };
+    return methods[method.toLowerCase()] || method;
+  };
+
   const handleCancelOrder = async () => {
     if (window.confirm('Are you sure you want to cancel this order?')) {
       try {
@@ -242,7 +264,7 @@ const OrderDetail = () => {
       }
     }
   };
-  
+
   if (loading) {
     return (
       <MainLayout>
@@ -252,7 +274,7 @@ const OrderDetail = () => {
       </MainLayout>
     );
   }
-  
+
   if (error) {
     return (
       <MainLayout>
@@ -267,7 +289,7 @@ const OrderDetail = () => {
       </MainLayout>
     );
   }
-  
+
   if (!order) {
     return (
       <MainLayout>
@@ -282,69 +304,77 @@ const OrderDetail = () => {
       </MainLayout>
     );
   }
-  
+
   return (
     <MainLayout>
       <OrderDetailContainer>
         <OrderDetailHeader>
-          <h1>Order #{order.orderNumber}</h1>
+          <h1>Đơn hàng #{order.orderNumber || order.id}</h1>
           <BackButton to="/orders">
             <FaArrowLeft /> Quay lại danh sách đơn hàng
           </BackButton>
         </OrderDetailHeader>
-        
+
         <CardContainer>
           <CardHeader>
             <h2><FaBox /> Thông tin đơn hàng</h2>
           </CardHeader>
           <CardBody>
             <OrderStatusContainer>
-              <OrderStatus status={order.status.toLowerCase()} showTracker={true} />
+              <OrderStatus status={order.status?.toLowerCase() || 'pending'} showTracker={true} />
             </OrderStatusContainer>
-            
+
             <OrderInfo>
               <InfoItem>
                 <h3>Ngày đặt hàng</h3>
-                <p>{new Date(order.createdAt).toLocaleDateString('vi-VN')}</p>
+                <p>{formatDate(order.createdAt)}</p>
               </InfoItem>
               <InfoItem>
                 <h3>Phương thức thanh toán</h3>
-                <p>{order.paymentMethod}</p>
+                <p>{formatPaymentMethod(order.paymentMethod)}</p>
               </InfoItem>
               {order.estimatedDelivery && (
                 <InfoItem>
                   <h3>Dự kiến giao hàng</h3>
-                  <p>{new Date(order.estimatedDelivery).toLocaleDateString('vi-VN')}</p>
+                  <p>{formatDate(order.estimatedDelivery)}</p>
                 </InfoItem>
               )}
             </OrderInfo>
           </CardBody>
         </CardContainer>
-        
+
         <CardContainer>
           <CardHeader>
             <h2><FaMapMarkerAlt /> Thông tin giao hàng</h2>
           </CardHeader>
           <CardBody>
             <OrderInfo>
-              <InfoItem>
-                <h3>Người nhận</h3>
-                <p>{order.shippingAddress.name}</p>
-              </InfoItem>
-              <InfoItem>
-                <h3>Số điện thoại</h3>
-                <p>{order.shippingAddress.phone}</p>
-              </InfoItem>
-              <InfoItem>
-                <h3>Address</h3>
-                <p>
-                  {order.shippingAddress.address}, {order.shippingAddress.city}, {order.shippingAddress.province}, {order.shippingAddress.postalCode}
-                </p>
-              </InfoItem>
+              {order.shippingAddress && typeof order.shippingAddress === 'object' ? (
+                <>
+                  <InfoItem>
+                    <h3>Người nhận</h3>
+                    <p>{order.shippingAddress.name ?? 'Chưa cập nhật'}</p>
+                  </InfoItem>
+                  <InfoItem>
+                    <h3>Số điện thoại</h3>
+                    <p>{order.shippingAddress.phone ?? 'Chưa cập nhật'}</p>
+                  </InfoItem>
+                  <InfoItem>
+                    <h3>Địa chỉ</h3>
+                    <p>
+                      {order.shippingAddress.address ?? 'Chưa cập nhật'}, {order.shippingAddress.city ?? ''}, {order.shippingAddress.province ?? ''}, {order.shippingAddress.postalCode ?? ''}
+                    </p>
+                  </InfoItem>
+                </>
+              ) : (
+                <InfoItem>
+                  <p>Chưa có thông tin giao hàng</p>
+                </InfoItem>
+              )}
             </OrderInfo>
           </CardBody>
         </CardContainer>
-        
+
         <CardContainer>
           <CardHeader>
             <h2><FaTruck /> Sản phẩm đã đặt</h2>
@@ -361,40 +391,42 @@ const OrderDetail = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {order.items.map(item => (
-                    <OrderProductItem key={item.id} item={item} />
+                  {order.items && order.items.map(item => (
+                    <OrderProductItem key={item.id || item.product_id} item={item} />
                   ))}
                 </tbody>
               </ItemTable>
-              
-              <OrderSummary 
-                subtotal={order.subtotal} 
-                shippingFee={order.shippingFee} 
-                discount={order.discount} 
-                total={order.total} 
+
+              <OrderSummary
+                subtotal={order.subtotal || 0}
+                shippingFee={order.shippingFee || 0}
+                discount={order.discount || 0}
+                total={order.total || 0}
               />
             </OrderItems>
           </CardBody>
         </CardContainer>
-        
+
         <ActionButtons>
           {order.status === 'pending' && (
-            <Button 
-              variant="danger" 
+            <Button
+              variant="danger"
               onClick={handleCancelOrder}
             >
               Hủy đơn hàng
             </Button>
           )}
-          <Button 
-            variant="outline" 
-            onClick={() => {/* Track order logic */}}
-          >
-            <FaTruck /> Theo dõi đơn hàng
-          </Button>
-          <Button 
-            variant="text" 
-            onClick={() => {/* Download invoice logic */}}
+          {order.status === 'shipped' && (
+            <Button
+              variant="warning"
+              onClick={() => {/* Confirm received logic */ }}
+            >
+              <FaTruck /> Xác nhận đã nhận hàng
+            </Button>
+          )}
+          <Button
+            variant="text"
+            onClick={() => {/* Download invoice logic */ }}
           >
             <FaFileInvoice /> Tải hóa đơn
           </Button>

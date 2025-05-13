@@ -162,7 +162,7 @@ const Orders = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  
+
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -173,37 +173,37 @@ const Orders = () => {
           search: searchTerm,
           status: statusFilter !== 'all' ? statusFilter : undefined
         });
-        
-        setOrders(response.orders);
-        setTotalPages(response.totalPages);
+
+        setOrders(response);
+        // setTotalPages(response.totalPages); // Nếu muốn phân trang, cần backend trả về tổng số trang
       } catch (error) {
         console.error('Failed to fetch orders:', error);
       } finally {
         setLoading(false);
       }
     };
-    
+
     if (currentUser) {
       fetchOrders();
     }
   }, [currentUser, currentPage, searchTerm, statusFilter]);
-  
+
   const handlePageChange = (page) => {
     setCurrentPage(page);
   };
-  
+
   const handleSearch = (e) => {
     if (e.key === 'Enter') {
       setCurrentPage(1);
       setSearchTerm(e.target.value);
     }
   };
-  
+
   const handleStatusFilterChange = (e) => {
     setCurrentPage(1);
     setStatusFilter(e.target.value);
   };
-  
+
   return (
     <MainLayout>
       <OrdersContainer>
@@ -211,7 +211,7 @@ const Orders = () => {
           <FaShoppingBag />
           Đơn hàng của tôi
         </OrdersTitle>
-        
+
         <CardContainer>
           <CardHeader>
             <h2><FaShoppingBag /> Lịch sử đơn hàng</h2>
@@ -220,13 +220,13 @@ const Orders = () => {
             <SearchFilterContainer>
               <SearchInput>
                 <FaSearch />
-                <input 
-                  type="text" 
-                  placeholder="Tìm kiếm theo mã đơn hàng hoặc sản phẩm" 
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm theo mã đơn hàng hoặc sản phẩm"
                   onKeyDown={handleSearch}
                 />
               </SearchInput>
-              
+
               <FilterContainer>
                 <FaFilter />
                 <FilterDropdown value={statusFilter} onChange={handleStatusFilterChange}>
@@ -240,8 +240,8 @@ const Orders = () => {
                 </FilterDropdown>
               </FilterContainer>
             </SearchFilterContainer>
-            
-            <OrderList 
+
+            <OrderList
               orders={orders}
               loading={loading}
               currentPage={currentPage}

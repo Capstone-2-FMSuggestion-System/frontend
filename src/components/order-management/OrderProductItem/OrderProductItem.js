@@ -65,25 +65,34 @@ const ProductTotal = styled.div`
 `;
 
 const OrderProductItem = ({ item }) => {
+  console.log('OrderProductItem received item:', item);
+
   return (
     <ProductRow>
       <ProductCell>
         <ProductInfo>
-          <ProductImage src={item.product.image} alt={item.product.name} />
+          <ProductImage
+            src={item.product?.images?.[0]?.image_url || item.product_image || '/images/placeholder.png'}
+            alt={item.product?.name || item.product_name || `#${item.product_id}`}
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = '/images/placeholder.png';
+            }}
+          />
           <ProductDetails>
-            <ProductName>{item.product.name}</ProductName>
-            {item.variant && <ProductVariant>{item.variant}</ProductVariant>}
+            <ProductName>{item.product?.name || item.product_name || `#${item.product_id}`}</ProductName>
+            <ProductVariant>Đơn vị: {item.unit || 'kg'}</ProductVariant>
           </ProductDetails>
         </ProductInfo>
       </ProductCell>
       <ProductCell>
-        <ProductPrice>{Math.round(item.price).toLocaleString()}đ/{item.product.unit || 'kg'}</ProductPrice>
+        <ProductPrice>{Math.round(item.price).toLocaleString()}đ/{item.unit || 'kg'}</ProductPrice>
       </ProductCell>
       <ProductCell>
         <ProductQuantity>{item.quantity}</ProductQuantity>
       </ProductCell>
       <ProductCell>
-        <ProductTotal>{Math.round(item.price * item.quantity).toLocaleString()}đ</ProductTotal>
+        <ProductTotal>{Math.round(item.total || (item.price * item.quantity)).toLocaleString()}đ</ProductTotal>
       </ProductCell>
     </ProductRow>
   );

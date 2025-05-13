@@ -41,13 +41,13 @@ const SearchResults = () => {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q') || '';
-  
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
-  
+
   useEffect(() => {
     const fetchSearchResults = async () => {
       if (!query) {
@@ -55,14 +55,14 @@ const SearchResults = () => {
         setLoading(false);
         return;
       }
-      
+
       try {
         setLoading(true);
         const data = await productService.searchProducts(query, {
           page: currentPage,
           limit: 12
         });
-        
+
         setProducts(data.products);
         setTotalPages(data.totalPages);
         setTotalResults(data.total);
@@ -72,15 +72,15 @@ const SearchResults = () => {
         setLoading(false);
       }
     };
-    
+
     fetchSearchResults();
   }, [query, currentPage]);
-  
+
   const handlePageChange = (page) => {
     setCurrentPage(page);
     window.scrollTo(0, 0);
   };
-  
+
   return (
     <MainLayout>
       <Container>
@@ -92,7 +92,7 @@ const SearchResults = () => {
             </SearchInfo>
           )}
         </SearchHeader>
-        
+
         {loading ? (
           <p>Loading results...</p>
         ) : products.length > 0 ? (
@@ -102,8 +102,8 @@ const SearchResults = () => {
                 <ProductCard key={product.id} product={product} />
               ))}
             </ProductGrid>
-            
-            <Pagination 
+
+            <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={handlePageChange}

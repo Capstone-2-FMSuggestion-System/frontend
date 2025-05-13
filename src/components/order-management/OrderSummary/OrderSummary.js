@@ -39,26 +39,31 @@ const DiscountValue = styled(SummaryValue)`
   color: #F44336;
 `;
 
-const OrderSummary = ({ subtotal, shippingFee, discount = 0, total }) => {
+const OrderSummary = ({ subtotal = 0, shippingFee = 0, discount = 0, total = 0 }) => {
+  const formatCurrency = (value) => {
+    if (typeof value !== 'number') return '0đ';
+    return value.toLocaleString('vi-VN') + 'đ';
+  };
+
   return (
     <SummaryContainer>
       <SummaryRow>
         <SummaryLabel>Tạm tính:</SummaryLabel>
-        <SummaryValue>{subtotal.toLocaleString()}đ</SummaryValue>
+        <SummaryValue>{formatCurrency(subtotal)}</SummaryValue>
       </SummaryRow>
       <SummaryRow>
         <SummaryLabel>Phí vận chuyển:</SummaryLabel>
-        <SummaryValue>{shippingFee.toLocaleString()}đ</SummaryValue>
+        <SummaryValue>{formatCurrency(shippingFee)}</SummaryValue>
       </SummaryRow>
       {discount > 0 && (
         <SummaryRow>
           <SummaryLabel>Giảm giá:</SummaryLabel>
-          <DiscountValue>-{discount.toLocaleString()}đ</DiscountValue>
+          <DiscountValue>-{formatCurrency(discount)}</DiscountValue>
         </SummaryRow>
       )}
       <SummaryRow>
         <SummaryLabel>Tổng cộng:</SummaryLabel>
-        <SummaryValue bold highlight>{total.toLocaleString()}đ</SummaryValue>
+        <SummaryValue bold highlight>{formatCurrency(total)}</SummaryValue>
       </SummaryRow>
     </SummaryContainer>
   );

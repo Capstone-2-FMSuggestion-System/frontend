@@ -1,24 +1,31 @@
 // src/pages/Home.js
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { FaTruck, FaLeaf, FaShippingFast, FaCheck } from 'react-icons/fa';
+import { FaLeaf, FaTruck, FaStar, FaShoppingCart, FaUtensils, FaHeart } from 'react-icons/fa';
 import MainLayout from '../layouts/MainLayout';
-import Button from '../components/common/Button/Button';
 import ProductCard from '../components/common/ProductCard/ProductCard';
-import productService from '../services/productService';
+import { getAllCategories } from '../services/categoryService';
+import { getFeaturedProducts } from '../services/productService';
+import { Link } from 'react-router-dom';
 
-const Banner = styled.div`
+const HeroSection = styled.section`
   position: relative;
-  height: 500px;
-  background-image: url('/assets/banner.jpg');
+  height: 60vh;
+  min-height: 400px;
+  background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), 
+              url('/assets/hero-bg.jpg');
   background-size: cover;
   background-position: center;
   display: flex;
   align-items: center;
-  margin-bottom: 40px;
-  border-radius: 8px;
+  justify-content: center;
+  text-align: center;
+  color: white;
+  margin-bottom: 0;
   overflow: hidden;
-  
+  border-radius: 0 0 20px 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
   &:before {
     content: '';
     position: absolute;
@@ -26,144 +33,152 @@ const Banner = styled.div`
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.4);
+    background: url('/assets/pattern.png');
+    opacity: 0.1;
+    pointer-events: none;
   }
 `;
 
-const BannerContent = styled.div`
-  position: relative;
-  z-index: 1;
-  color: white;
-  padding: 0 50px;
+const HeroContent = styled.div`
   max-width: 600px;
+  padding: 0 1.5rem;
+  position: relative;
+  z-index: 2;
   
   h1 {
     font-size: 2.5rem;
-    margin-bottom: 20px;
+    margin-bottom: 1rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
   }
   
   p {
     font-size: 1.1rem;
-    margin-bottom: 30px;
-    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
   }
 `;
 
-const Section = styled.section`
-  margin-bottom: 60px;
+const Button = styled(Link)`
+  display: inline-block;
+  padding: 0.8rem 2rem;
+  background-color: #4CAF50;
+  color: white;
+  text-decoration: none;
+  border-radius: 30px;
+  font-weight: 500;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+  
+  &:hover {
+    background-color: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+  }
+`;
+
+const FeaturesSection = styled.section`
+  padding: 3rem 0;
+  background-color: #fff;
+`;
+
+const FeaturesGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+`;
+
+const FeatureCard = styled.div`
+  text-align: center;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-5px);
+  }
+  
+  svg {
+    font-size: 2rem;
+    color: #4CAF50;
+    margin-bottom: 1rem;
+  }
+  
+  h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: #333;
+  }
+  
+  p {
+    color: #666;
+    line-height: 1.4;
+    font-size: 0.9rem;
+  }
+`;
+
+const ProductsSection = styled.section`
+  padding: 3rem 0;
+  background-color: #f8f9fa;
 `;
 
 const SectionTitle = styled.h2`
-  font-size: 1.8rem;
-  margin-bottom: 30px;
+  text-align: center;
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  color: #333;
   position: relative;
-  padding-bottom: 15px;
   
   &:after {
     content: '';
     position: absolute;
-    bottom: 0;
-    left: 0;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
     width: 60px;
     height: 3px;
     background-color: #4CAF50;
   }
 `;
 
-const ProductGrid = styled.div`
+const ProductsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 30px;
+  gap: 1.5rem;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
 `;
 
-const Features = styled.div`
+const CategoriesSection = styled.section`
+  padding: 3rem 0;
+  background-color: #fff;
+`;
+
+const CategoriesGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 30px;
-  margin: 40px 0;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
 `;
 
-const FeatureItem = styled.div`
-  display: flex;
-  align-items: center;
-  
-  svg {
-    font-size: 2rem;
-    color: #4CAF50;
-    margin-right: 15px;
-    flex-shrink: 0;
-  }
-  
-  div {
-    h3 {
-      margin: 0 0 8px;
-      font-size: 1.2rem;
-    }
-    
-    p {
-      margin: 0;
-      color: #666;
-    }
-  }
-`;
-
-const PromoBanner = styled.div`
-  background-color: #f9f5e8;
-  padding: 40px;
-  border-radius: 8px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  margin: 40px 0;
-  
-  div {
-    max-width: 60%;
-    
-    h3 {
-      font-size: 1.5rem;
-      margin: 0 0 15px;
-      color: #333;
-    }
-    
-    p {
-      margin: 0;
-      color: #666;
-      line-height: 1.6;
-    }
-  }
-  
-  @media (max-width: 768px) {
-    padding: 30px;
-    flex-direction: column;
-    
-    div {
-      max-width: 100%;
-      margin-bottom: 20px;
-    }
-  }
-`;
-
-const CategorySection = styled.div`
-  margin: 40px 0;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const CategoryCard = styled.div`
+const CategoryCard = styled(Link)`
   position: relative;
-  height: 200px;
-  border-radius: 8px;
+  height: 300px;
+  border-radius: 12px;
   overflow: hidden;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   
   img {
     width: 100%;
@@ -181,130 +196,222 @@ const CategoryCard = styled.div`
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 20px;
+    padding: 1.5rem;
     background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
     color: white;
     
     h3 {
-      margin: 0 0 5px;
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
     }
     
     p {
-      margin: 0;
       font-size: 0.9rem;
-      opacity: 0.8;
+      opacity: 0.9;
+      margin-bottom: 1rem;
     }
+  }
+`;
+
+const CTAButton = styled(Link)`
+  display: inline-block;
+  padding: 0.6rem 1.2rem;
+  background-color: #4CAF50;
+  color: white;
+  text-decoration: none;
+  border-radius: 20px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background-color: #45a049;
+    transform: translateY(-2px);
+  }
+`;
+
+const TestimonialSection = styled.section`
+  padding: 3rem 0;
+  background-color: #f8f9fa;
+  text-align: center;
+`;
+
+const TestimonialContent = styled.div`
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  
+  p {
+    font-size: 1.1rem;
+    line-height: 1.5;
+    color: #333;
+    margin-bottom: 1rem;
+    font-style: italic;
+  }
+  
+  .author {
+    font-weight: 500;
+    color: #4CAF50;
   }
 `;
 
 const Home = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+  const [categoryLoading, setCategoryLoading] = useState(true);
+
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const data = await productService.getFeaturedProducts();
-        setFeaturedProducts(data);
+        setCategoryLoading(true);
+
+        // Fetch featured products
+        const productsData = await getFeaturedProducts();
+        console.log('Featured products raw data:', productsData);
+
+        // Chuyển đổi dữ liệu nếu cần thiết
+        const formatted = Array.isArray(productsData) ? productsData : [];
+        setFeaturedProducts(formatted);
+
+        // Fetch categories
+        const categoriesData = await getAllCategories();
+        console.log('Categories raw data:', categoriesData);
+        setCategories(categoriesData);
       } catch (error) {
-        console.error('Failed to fetch featured products:', error);
+        console.error('Error fetching data:', error);
+        // Đặt sản phẩm trống để tránh lỗi
+        setFeaturedProducts([]);
       } finally {
         setLoading(false);
+        setCategoryLoading(false);
       }
     };
-    
-    fetchProducts();
+
+    fetchData();
   }, []);
-  
+
   return (
     <MainLayout>
-      <Banner>
-        <BannerContent>
-          <h1>Rau củ tươi & Thực phẩm 100% sạch.</h1>
-          <p>Luôn luôn có sản phẩm mới cho bạn</p>
-          <Button variant="secondary" size="large">Mua ngay</Button>
-        </BannerContent>
-      </Banner>
-      
-      <Features>
-        <FeatureItem>
-          <FaTruck />
-          <div>
-            <h3>Top Seeds</h3>
-            <p>Farm-to-table to bring quality and health to your family's table every day</p>
-          </div>
-        </FeatureItem>
-        <FeatureItem>
-          <FaLeaf />
-          <div>
-            <h3>Organic Certified</h3>
-            <p>Organically grown products for a healthier, chemical-free lifestyle</p>
-          </div>
-        </FeatureItem>
-        <FeatureItem>
-          <FaShippingFast />
-          <div>
-            <h3>Fresh groceries</h3>
-            <p>Fresh groceries at your doorstep in no time, ensuring convenience</p>
-          </div>
-        </FeatureItem>
-        <FeatureItem>
-          <FaCheck />
-          <div>
-            <h3>Trusted Products</h3>
-            <p>Handpicked, high-quality items you can rely on for your family's well-being</p>
-          </div>
-        </FeatureItem>
-      </Features>
-      
-      <PromoBanner>
-        <div>
-          <h3>Giao hàng miễn phí khi bạn chi tiêu trên 200.000đ</h3>
-          <p>Đặt hàng ngay hôm nay để tận hưởng dịch vụ giao hàng miễn phí</p>
-        </div>
-        <Button variant="secondary">Mua ngay</Button>
-      </PromoBanner>
-      
-      <Section>
+      <HeroSection>
+        <HeroContent>
+          <h1>Bữa ăn ngon cho gia đình bạn</h1>
+          <p>Thực phẩm tươi ngon, đảm bảo chất lượng, giao hàng tận nhà</p>
+          <Button to="/products">Đặt hàng ngay</Button>
+        </HeroContent>
+      </HeroSection>
+
+      <FeaturesSection>
+        <SectionTitle>Tại sao chọn chúng tôi?</SectionTitle>
+        <FeaturesGrid>
+          <FeatureCard>
+            <FaLeaf />
+            <h3>Thực phẩm tươi ngon</h3>
+            <p>Cam kết chất lượng và độ tươi ngon của sản phẩm</p>
+          </FeatureCard>
+          <FeatureCard>
+            <FaTruck />
+            <h3>Giao hàng nhanh chóng</h3>
+            <p>Đơn hàng được giao trong thời gian ngắn nhất</p>
+          </FeatureCard>
+          <FeatureCard>
+            <FaUtensils />
+            <h3>Thực đơn đa dạng</h3>
+            <p>Nhiều lựa chọn cho bữa ăn gia đình</p>
+          </FeatureCard>
+          <FeatureCard>
+            <FaHeart />
+            <h3>Chăm sóc sức khỏe</h3>
+            <p>Sản phẩm được kiểm tra chất lượng nghiêm ngặt</p>
+          </FeatureCard>
+        </FeaturesGrid>
+      </FeaturesSection>
+
+      <ProductsSection>
         <SectionTitle>Sản phẩm nổi bật</SectionTitle>
-        <ProductGrid>
+        <ProductsGrid>
           {loading ? (
-            <p>Loading products...</p>
+            <p>Đang tải sản phẩm...</p>
+          ) : featuredProducts.length === 0 ? (
+            <p>Không có sản phẩm nổi bật</p>
           ) : (
-            featuredProducts.map(product => (
-              <ProductCard key={product.id} product={product} />
+            featuredProducts.map(product => {
+              // Xác định ID sản phẩm
+              const productId = product.id || product.product_id;
+              // Xử lý ảnh sản phẩm
+              let productImage = '';
+
+              // Kiểm tra cấu trúc ảnh
+              if (product.image) {
+                // Nếu đã có thuộc tính image
+                productImage = product.image;
+              } else if (Array.isArray(product.images) && product.images.length > 0) {
+                if (typeof product.images[0] === 'string') {
+                  // Nếu images là mảng các URL
+                  productImage = product.images[0];
+                } else if (product.images[0].image_url) {
+                  // Nếu images là mảng các đối tượng có image_url
+                  productImage = product.images[0].image_url;
+                }
+              }
+
+              console.log('Product data:', {
+                id: productId,
+                name: product.name,
+                price: product.price || product.discountPrice,
+                original_price: product.original_price || product.originalPrice,
+                image: productImage
+              });
+
+              return (
+                <ProductCard
+                  key={productId}
+                  product={{
+                    id: productId,
+                    name: product.name,
+                    price: Number(product.price || product.discountPrice || 0),
+                    original_price: Number(product.original_price || product.originalPrice || 0),
+                    image: productImage,
+                    unit: product.unit || 'kg'
+                  }}
+                />
+              );
+            })
+          )}
+        </ProductsGrid>
+      </ProductsSection>
+
+      <CategoriesSection>
+        <SectionTitle>Danh mục sản phẩm</SectionTitle>
+        <CategoriesGrid>
+          {categoryLoading ? (
+            <p>Đang tải danh mục...</p>
+          ) : (
+            categories.slice(0, 6).map(category => (
+              <CategoryCard key={category.category_id} to={`/categories/${category.category_id}`}>
+                <img
+                  src={category.description || '/images/categories/default.jpg'}
+                  alt={category.name}
+                />
+                <div className="overlay">
+                  <h3>{category.name}</h3>
+                  <CTAButton to={`/categories/${category.category_id}`}>Xem thêm </CTAButton>
+                </div>
+              </CategoryCard>
             ))
           )}
-        </ProductGrid>
-      </Section>
-      
-      <Section>
-        <SectionTitle>Danh mục sản phẩm</SectionTitle>
-        <CategorySection>
-          <CategoryCard>
-            <img src="/assets/categories/meat.jpg" alt="Meat" />
-            <div className="overlay">
-              <h3>Thịt tươi</h3>
-              <p>Giảm đến 30%</p>
-            </div>
-          </CategoryCard>
-          <CategoryCard>
-            <img src="/assets/categories/vegetables.jpg" alt="Vegetables" />
-            <div className="overlay">
-              <h3>Thực phẩm tươi mới hàng ngày</h3>
-              <p>Giảm đến 30%</p>
-            </div>
-          </CategoryCard>
-          <CategoryCard>
-            <img src="/assets/categories/fruits.jpg" alt="Fruits" />
-            <div className="overlay">
-              <h3>Trái cây đặc biệt giảm giá</h3>
-              <p>Giảm đến 30%</p>
-            </div>
-          </CategoryCard>
-        </CategorySection>
-      </Section>
+        </CategoriesGrid>
+      </CategoriesSection>
+
+      <TestimonialSection>
+        <SectionTitle>Khách hàng nói gì về chúng tôi</SectionTitle>
+        <TestimonialContent>
+          <p>"Tôi rất hài lòng với chất lượng sản phẩm và dịch vụ của cửa hàng. Thực phẩm luôn tươi ngon, giao hàng nhanh chóng và nhân viên rất nhiệt tình."</p>
+          <p className="author">- Chị Nguyễn Thị Mai, Hà Nội</p>
+        </TestimonialContent>
+      </TestimonialSection>
     </MainLayout>
   );
 };

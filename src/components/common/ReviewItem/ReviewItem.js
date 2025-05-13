@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { FaStar, FaThumbsUp, FaThumbsDown } from 'react-icons/fa';
-import productService from '../../../services/productService';
+import { voteReview } from '../../../services/productService';
 
 const ReviewCard = styled.div`
   margin-bottom: 30px;
@@ -136,7 +136,7 @@ const ReviewItem = ({ review, productId }) => {
   const [disliked, setDisliked] = useState(review.user_voted === 'dislike');
   const [likeCount, setLikeCount] = useState(review.like_count || 0);
   const [dislikeCount, setDislikeCount] = useState(review.dislike_count || 0);
-  
+
   const getInitials = (name) => {
     if (!name) return 'U';
     return name
@@ -146,20 +146,20 @@ const ReviewItem = ({ review, productId }) => {
       .toUpperCase()
       .substring(0, 2);
   };
-  
+
   const handleLike = async () => {
     try {
       if (liked) {
         // Bỏ like
-        await productService.voteReview(productId, review.review_id, 'remove');
+        await voteReview(productId, review.review_id, 'remove');
         setLiked(false);
         setLikeCount(likeCount - 1);
       } else {
         // Thêm like
-        await productService.voteReview(productId, review.review_id, 'like');
+        await voteReview(productId, review.review_id, 'like');
         setLiked(true);
         setLikeCount(likeCount + 1);
-        
+
         // Nếu đã dislike trước đó, bỏ dislike
         if (disliked) {
           setDisliked(false);
@@ -170,20 +170,20 @@ const ReviewItem = ({ review, productId }) => {
       console.error('Failed to vote review:', error);
     }
   };
-  
+
   const handleDislike = async () => {
     try {
       if (disliked) {
         // Bỏ dislike
-        await productService.voteReview(productId, review.review_id, 'remove');
+        await voteReview(productId, review.review_id, 'remove');
         setDisliked(false);
         setDislikeCount(dislikeCount - 1);
       } else {
         // Thêm dislike
-        await productService.voteReview(productId, review.review_id, 'dislike');
+        await voteReview(productId, review.review_id, 'dislike');
         setDisliked(true);
         setDislikeCount(dislikeCount + 1);
-        
+
         // Nếu đã like trước đó, bỏ like
         if (liked) {
           setLiked(false);
@@ -194,7 +194,7 @@ const ReviewItem = ({ review, productId }) => {
       console.error('Failed to vote review:', error);
     }
   };
-  
+
   // Format ngày tháng
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -211,13 +211,13 @@ const ReviewItem = ({ review, productId }) => {
       return dateString;
     }
   };
-  
+
   return (
     <ReviewCard>
       <UserInfo>
         <Avatar>
-          {review.avatar_url ? 
-            <img src={review.avatar_url} alt={review.username || 'User'} /> : 
+          {review.avatar_url ?
+            <img src={review.avatar_url} alt={review.username || 'User'} /> :
             getInitials(review.username)
           }
         </Avatar>
@@ -226,15 +226,15 @@ const ReviewItem = ({ review, productId }) => {
           <ReviewDate>{formatDate(review.created_at)}</ReviewDate>
         </UserDetails>
       </UserInfo>
-      
+
       <RatingStars>
         {[...Array(5)].map((_, i) => (
           <FaStar key={i} color={i < review.rating ? "#FFD700" : "#e4e5e9"} />
         ))}
       </RatingStars>
-      
+
       <ReviewText>{review.content}</ReviewText>
-      
+
       {review.images && review.images.length > 0 && (
         <ReviewImages>
           {review.images.map((image, index) => (
@@ -244,18 +244,18 @@ const ReviewItem = ({ review, productId }) => {
           ))}
         </ReviewImages>
       )}
-      
+
       <Actions>
-        <ActionButton 
-          className={liked ? 'active' : ''} 
+        <ActionButton
+          className={liked ? 'active' : ''}
           active={liked ? 'like' : ''}
           onClick={handleLike}
         >
           <FaThumbsUp /> Hữu ích <VoteCount>({likeCount})</VoteCount>
         </ActionButton>
-        
-        <ActionButton 
-          className={disliked ? 'active' : ''} 
+
+        <ActionButton
+          className={disliked ? 'active' : ''}
           active={disliked ? 'dislike' : ''}
           onClick={handleDislike}
         >
