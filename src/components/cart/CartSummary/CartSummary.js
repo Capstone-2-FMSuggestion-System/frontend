@@ -119,6 +119,14 @@ const CartSummary = ({ onCheckout }) => {
     }
   };
 
+  // Hàm định dạng tiền tệ VND
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(amount);
+  };
+
   // Calculate summary values
   const subtotal = cart.totalAmount;
   const shipping = subtotal > 200000 ? 0 : 20000;
@@ -130,27 +138,27 @@ const CartSummary = ({ onCheckout }) => {
       <SummaryTitle>Tổng kết hoá đơn</SummaryTitle>
 
       <SummaryRow>
-        <span className="label">Thành giá</span>
-        <span className="value">{subtotal}đ</span>
+        <span className="label">Thành tiền</span>
+        <span className="value">{formatCurrency(subtotal)}</span>
       </SummaryRow>
 
       <SummaryRow>
         <span className="label">Giảm giá</span>
-        <span className="value">-{discount}đ</span>
+        <span className="value">-{formatCurrency(discount)}</span>
       </SummaryRow>
 
       <SummaryRow>
-        <span className="label">Shipping</span>
+        <span className="label">Phí vận chuyển</span>
         <span className="value">
-          {shipping === 0 ? "Miễn phí" : `${shipping}đ`}
+          {shipping === 0 ? "Miễn phí" : formatCurrency(shipping)}
         </span>
       </SummaryRow>
 
       <Divider />
 
       <TotalRow bold>
-        <span className="label">TỔNG</span>
-        <span className="value">{total}đ</span>
+        <span className="label">TỔNG CỘNG</span>
+        <span className="value">{formatCurrency(total)}</span>
       </TotalRow>
 
       <CouponForm>
