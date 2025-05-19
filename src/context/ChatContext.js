@@ -1,10 +1,10 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { createNewSession, sendMessage, getSimilarProducts, getChatHistory } from '../services/chatService';
+import { createNewChat, sendMessageToChat, getChatContent, checkChatServiceHealth } from '../services/chatService';
 import { useAuth } from './AuthContext';
 import mockProducts from '../mock/products';
 
 // Constants
-const SESSION_ID_KEY = 'chat_session_id';
+const SESSION_ID_KEY = 'chat_conversation_id';
 const MAX_MESSAGES_PER_SESSION = 30;
 const MESSAGE_COUNT_KEY = 'chat_message_count';
 const IS_NEW_CHAT_KEY = 'chat_is_new_session';
@@ -15,35 +15,35 @@ export const ChatProvider = ({ children }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [sessionId, setSessionId] = useState(null);
+  const [conversationId, setConversationId] = useState(null);
   const [messageCount, setMessageCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [similarProducts, setSimilarProducts] = useState({}); // Lưu sản phẩm tương tự theo ID tin nhắn
-  const [isNewChat, setIsNewChat] = useState(true); // Đánh dấu phiên chat là mới hay không
+  const [similarProducts, setSimilarProducts] = useState({});
+  const [isNewChat, setIsNewChat] = useState(true);
   const { user, isAuthenticated } = useAuth();
 
-  // Load session_id và message_count từ localStorage khi khởi động
+  // Load conversation_id và message_count từ localStorage khi khởi động
   useEffect(() => {
-    const savedSessionId = localStorage.getItem(SESSION_ID_KEY);
+    const savedConversationId = localStorage.getItem(SESSION_ID_KEY);
     const savedMessageCount = parseInt(localStorage.getItem(MESSAGE_COUNT_KEY) || '0', 10);
     const savedIsNewChat = localStorage.getItem(IS_NEW_CHAT_KEY) === 'true';
     
-    if (savedSessionId) {
-      console.log('Khôi phục session_id từ localStorage:', savedSessionId);
-      setSessionId(savedSessionId);
+    if (savedConversationId) {
+      console.log('Khôi phục conversation_id từ localStorage:', savedConversationId);
+      setConversationId(savedConversationId);
       setIsNewChat(savedIsNewChat);
       
       // Nếu đã có tin nhắn, không cần tải lại lịch sử
       if (messages.length === 0) {
-        // Luôn gọi API để lấy lịch sử trò chuyện nếu có session_id
-        loadChatHistory(savedSessionId);
+        // Luôn gọi API để lấy lịch sử trò chuyện nếu có conversation_id
+        loadChatHistory(savedConversationId);
       }
     } else {
-      // Chỉ tạo phiên chat mới khi KHÔNG có session_id trong localStorage
+      // Chỉ tạo phiên chat mới khi KHÔNG có conversation_id trong localStorage
       // VÀ là lần đầu tiên mở ứng dụng (không phải refresh)
-      console.log('Không tìm thấy session_id trong localStorage, cần tạo mới trong lần mở chat đầu tiên');
-      // QUAN TRỌNG: KHÔNG tạo session mới ở đây, chỉ tạo khi người dùng mở chat
+      console.log('Không tìm thấy conversation_id trong localStorage, cần tạo mới trong lần mở chat đầu tiên');
+      // QUAN TRỌNG: KHÔNG tạo conversation mới ở đây, chỉ tạo khi người dùng mở chat
       // createNewChatSession(true); - LOẠI BỎ DÒNG NÀY
     }
     
@@ -52,26 +52,49 @@ export const ChatProvider = ({ children }) => {
     }
   }, []);
 
-  // Lưu session_id và message_count vào localStorage mỗi khi thay đổi
+  // Lưu conversation_id và message_count vào localStorage mỗi khi thay đổi
   useEffect(() => {
-    if (sessionId) {
-      console.log('Lưu session_id vào localStorage:', sessionId);
-      localStorage.setItem(SESSION_ID_KEY, sessionId);
+    if (conversationId) {
+      console.log('Lưu conversation_id vào localStorage:', conversationId);
+      localStorage.setItem(SESSION_ID_KEY, conversationId);
     }
     
     localStorage.setItem(MESSAGE_COUNT_KEY, messageCount.toString());
     localStorage.setItem(IS_NEW_CHAT_KEY, isNewChat.toString());
-  }, [sessionId, messageCount, isNewChat]);
+  }, [conversationId, messageCount, isNewChat]);
 
   // Hàm tải lịch sử trò chuyện từ backend
-  const loadChatHistory = async (chatSessionId) => {
+  const loadChatHistory = async (chatConversationId) => {
     try {
       setIsLoading(true);
-      const historyData = await getChatHistory(chatSessionId);
+      const historyData = await getChatContent(chatConversationId);
+      
+      // Kiểm tra lỗi xác thực
+      if (historyData.authError) {
+        console.log('Lỗi xác thực khi tải lịch sử trò chuyện');
+        
+        // Hiển thị thông báo lỗi xác thực và gợi ý đăng nhập lại
+        const authErrorMessage = {
+          id: Date.now(),
+          text: "Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại để tiếp tục trò chuyện.",
+          isUser: false,
+          isError: true,
+          isAuthError: true,
+          avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp',
+          isFirstMessage: true
+        };
+        
+        setMessages([authErrorMessage]);
+        // Xóa conversation_id trong localStorage để tạo mới khi đăng nhập lại
+        localStorage.removeItem(SESSION_ID_KEY);
+        setConversationId(null);
+        setIsLoading(false);
+        return;
+      }
       
       if (historyData.error) {
         console.error('Lỗi khi tải lịch sử trò chuyện:', historyData.error);
-        // QUAN TRỌNG: KHÔNG tạo session mới khi có lỗi, chỉ xóa loading
+        // QUAN TRỌNG: KHÔNG tạo conversation mới khi có lỗi, chỉ xóa loading
         setIsLoading(false);
         return;
       }
@@ -88,7 +111,8 @@ export const ChatProvider = ({ children }) => {
           const userMsgId = Date.now() + index * 2;
           messages.push({
             id: userMsgId,
-            text: msg.question,
+            // Hỗ trợ cả định dạng mới (msg.content) và cũ (msg.user_message/question)
+            text: msg.role === "user" ? msg.content : (msg.user_message || msg.question),
             isUser: true,
             avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava2-bg.webp'
           });
@@ -97,7 +121,8 @@ export const ChatProvider = ({ children }) => {
           const botMsgId = Date.now() + index * 2 + 1;
           messages.push({
             id: botMsgId,
-            text: msg.answer,
+            // Hỗ trợ cả định dạng mới (msg.content) và cũ (msg.ai_response/answer)
+            text: msg.role === "assistant" ? msg.content : (msg.ai_response || msg.answer),
             isUser: false,
             avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp',
             // Đánh dấu tin nhắn chào đầu tiên (bây giờ là tin nhắn cuối sau khi đảo ngược)
@@ -114,31 +139,39 @@ export const ChatProvider = ({ children }) => {
         setIsNewChat(false);
         localStorage.setItem(IS_NEW_CHAT_KEY, 'false');
       } else {
-        // Nếu không có tin nhắn từ API nhưng vẫn có session_id hợp lệ
-        // Hiển thị tin nhắn chào mừng mà KHÔNG tạo session mới
+        // Nếu không có tin nhắn từ API nhưng vẫn có conversation_id hợp lệ
+        // Hiển thị tin nhắn chào mừng mà KHÔNG tạo conversation mới
         console.log('Session hợp lệ nhưng không có lịch sử trò chuyện, hiển thị tin nhắn chào mừng');
         createInitialWelcomeMessage();
       }
     } catch (error) {
       console.error('Lỗi khi tải lịch sử trò chuyện:', error);
-      // QUAN TRỌNG: KHÔNG tạo session mới khi có lỗi, chỉ hiển thị chào mừng
-      createInitialWelcomeMessage();
+      
+      // Kiểm tra lỗi xác thực
+      if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+        const authErrorMessage = {
+          id: Date.now(),
+          text: "Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại để tiếp tục trò chuyện.",
+          isUser: false,
+          isError: true,
+          isAuthError: true,
+          avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp',
+          isFirstMessage: true
+        };
+        
+        setMessages([authErrorMessage]);
+        localStorage.removeItem(SESSION_ID_KEY);
+        setConversationId(null);
+      } else {
+        // QUAN TRỌNG: KHÔNG tạo conversation mới khi có lỗi, chỉ hiển thị chào mừng
+        createInitialWelcomeMessage();
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Tạo phiên chat mới khi component được mount hoặc khi user thay đổi
-  useEffect(() => {
-    // Chỉ thực hiện kiểm tra khi user thay đổi
-    if (isAuthenticated && user?.id) {
-      // Chỉ kiểm tra xem session hiện tại có thuộc về user này không
-      // Không tự động tạo session mới
-      console.log('User thay đổi, nếu muốn chat mới hãy nhấn nút tạo phiên mới');
-    }
-  }, [isAuthenticated, user]);
-
-  // Hàm tạo tin nhắn chào mừng mà không cần gọi API
+  // Tạo tin nhắn chào mừng mà không cần gọi API
   const createInitialWelcomeMessage = () => {
     setIsLoading(true);
     
@@ -202,17 +235,15 @@ export const ChatProvider = ({ children }) => {
         [tempWelcomeMessage.id]: randomProducts
       });
       
-      // Tạo session mới từ API
+      // Tạo conversation mới từ API
       if (shouldCallApi) {
         try {
-          // Nếu đã đăng nhập thì sử dụng userId, còn không thì để mặc định
-          const userId = isAuthenticated && user?.id ? user.id : null;
-          console.log('Gọi API tạo phiên mới với userId:', userId);
-          const response = await createNewSession(userId);
+          console.log('Gọi API tạo phiên mới');
+          const response = await createNewChat();
           
-          // Kiểm tra nếu có lỗi xác thực (403 Forbidden)
+          // Kiểm tra nếu có lỗi xác thực (401/403)
           if (response.authError) {
-            console.log('Lỗi xác thực (403 Forbidden) khi tạo phiên chat mới');
+            console.log('Lỗi xác thực khi tạo phiên chat mới');
             
             // Nếu người dùng đã đăng nhập, hiển thị thông báo lỗi khác
             if (isAuthenticated && user) {
@@ -230,7 +261,7 @@ export const ChatProvider = ({ children }) => {
               // Nếu chưa đăng nhập, hiển thị thông báo đăng nhập
               const authErrorMessage = {
                 id: tempWelcomeMessage.id,
-                text: response.answer || "Bạn không có quyền truy cập vào chức năng này. Vui lòng đăng nhập lại hoặc liên hệ quản trị viên.",
+                text: response.welcome_message || "Bạn không có quyền truy cập vào chức năng này. Vui lòng đăng nhập lại hoặc liên hệ quản trị viên.",
                 isUser: false,
                 isError: true,
                 isAuthError: true,
@@ -243,19 +274,30 @@ export const ChatProvider = ({ children }) => {
             return;
           }
           
-          if (response.session_id) {
-            console.log('Nhận session_id mới từ API:', response.session_id);
-            // Lưu session_id mới vào state và localStorage
-            // QUAN TRỌNG: Đảm bảo session_id được lưu vào localStorage ngay khi nhận được
-            localStorage.setItem(SESSION_ID_KEY, response.session_id);
-            setSessionId(response.session_id);
+          if (response.conversation_id) {
+            console.log('Nhận conversation_id mới từ API:', response.conversation_id);
+            // Lưu conversation_id mới vào state và localStorage
+            localStorage.setItem(SESSION_ID_KEY, response.conversation_id);
+            setConversationId(response.conversation_id);
+            
+            // Cập nhật tin nhắn chào mừng nếu API trả về welcome_message
+            if (response.welcome_message) {
+              const welcomeMessage = {
+                id: tempWelcomeMessage.id,
+                text: response.welcome_message,
+                isUser: false,
+                avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp',
+                isFirstMessage: true
+              };
+              setMessages([welcomeMessage]);
+            }
           } else {
-            console.log('API không trả về session_id, lỗi kết nối');
+            console.log('API không trả về conversation_id, lỗi kết nối');
             console.error('Chi tiết phản hồi từ API:', response);
           }
         } catch (error) {
           console.error('Lỗi khi gọi API tạo phiên chat mới:', error);
-          // QUAN TRỌNG: Không tạo session_id tạm thời nữa, chỉ giữ trạng thái hiện tại
+          // QUAN TRỌNG: Không tạo conversation_id tạm thời nữa, chỉ giữ trạng thái hiện tại
         }
       }
       
@@ -286,18 +328,18 @@ export const ChatProvider = ({ children }) => {
         // Và không có tin nhắn nào
         if (!isLoading) {
           // Và không đang tải
-          const savedSessionId = localStorage.getItem(SESSION_ID_KEY);
+          const savedConversationId = localStorage.getItem(SESSION_ID_KEY);
           
-          if (savedSessionId) {
-            // Nếu có session_id trong localStorage và chưa được set vào state
-            if (!sessionId) {
-              console.log('Phát hiện session_id trong localStorage khi mở chat:', savedSessionId);
-              setSessionId(savedSessionId);
-              loadChatHistory(savedSessionId);
+          if (savedConversationId) {
+            // Nếu có conversation_id trong localStorage và chưa được set vào state
+            if (!conversationId) {
+              console.log('Phát hiện conversation_id trong localStorage khi mở chat:', savedConversationId);
+              setConversationId(savedConversationId);
+              loadChatHistory(savedConversationId);
             }
           } else {
-            // Nếu không có session_id trong localStorage và trong state, TẠO MỚI
-            console.log('Không có session_id, tạo phiên mới khi mở chat lần đầu');
+            // Nếu không có conversation_id trong localStorage và trong state, TẠO MỚI
+            console.log('Không có conversation_id, tạo phiên mới khi mở chat lần đầu');
             createNewChatSession(true);
           }
         }
@@ -353,27 +395,26 @@ export const ChatProvider = ({ children }) => {
       setIsNewChat(false);
       localStorage.setItem(IS_NEW_CHAT_KEY, 'false');
       
-      // Đảm bảo có session_id trước khi gửi tin nhắn
-      let currentSessionId = sessionId;
+      // Đảm bảo có conversation_id trước khi gửi tin nhắn
+      let currentConversationId = conversationId;
       
-      if (!currentSessionId) {
-        console.log('Không có session_id, cần tạo phiên chat mới từ API');
+      if (!currentConversationId) {
+        console.log('Không có conversation_id, cần tạo phiên chat mới từ API');
         try {
           // Tạo phiên mới từ API
-          const userId = isAuthenticated && user?.id ? user.id : null;
-          const response = await createNewSession(userId);
+          const response = await createNewChat();
           
-          if (response.session_id) {
-            currentSessionId = response.session_id;
-            setSessionId(currentSessionId);
-            localStorage.setItem(SESSION_ID_KEY, currentSessionId);
-            console.log('Đã tạo session_id mới từ API:', currentSessionId);
+          if (response.conversation_id) {
+            currentConversationId = response.conversation_id;
+            setConversationId(currentConversationId);
+            localStorage.setItem(SESSION_ID_KEY, currentConversationId);
+            console.log('Đã tạo conversation_id mới từ API:', currentConversationId);
           } else {
-            console.error('Không thể tạo session_id mới từ API');
-            throw new Error('Không thể tạo session_id mới');
+            console.error('Không thể tạo conversation_id mới từ API');
+            throw new Error('Không thể tạo conversation_id mới');
           }
         } catch (error) {
-          console.error('Lỗi khi tạo session_id mới:', error);
+          console.error('Lỗi khi tạo conversation_id mới:', error);
           
           // Hiển thị thông báo lỗi
           const errorMessage = {
@@ -390,19 +431,19 @@ export const ChatProvider = ({ children }) => {
         }
       }
 
-      console.log('Gửi tin nhắn với session_id:', currentSessionId);
+      console.log('Gửi tin nhắn với conversation_id:', currentConversationId);
       
       // Tăng số lượng tin nhắn đã gửi
       const newMessageCount = messageCount + 1;
       setMessageCount(newMessageCount);
       localStorage.setItem(MESSAGE_COUNT_KEY, newMessageCount.toString());
 
-      // Gửi tin nhắn đến API với session_id hiện tại
-      const response = await sendMessage(text, currentSessionId, user?.id || null);
+      // Gửi tin nhắn đến API với conversation_id hiện tại
+      const response = await sendMessageToChat(currentConversationId, text);
       
-      // Kiểm tra nếu có lỗi xác thực (403 Forbidden)
+      // Kiểm tra nếu có lỗi xác thực (401/403)
       if (response.authError) {
-        console.log('Lỗi xác thực (403 Forbidden) khi gửi tin nhắn');
+        console.log('Lỗi xác thực khi gửi tin nhắn');
         // Nếu người dùng đã đăng nhập, hiển thị thông báo lỗi khác
         if (isAuthenticated && user) {
           const authErrorMessage = {
@@ -417,7 +458,7 @@ export const ChatProvider = ({ children }) => {
           // Nếu chưa đăng nhập, hiển thị thông báo đăng nhập
           const authErrorMessage = {
             id: Date.now() + 2,
-            text: response.answer || "Bạn không có quyền truy cập vào chức năng này. Vui lòng đăng nhập lại hoặc liên hệ quản trị viên.",
+            text: response.ai_response || "Bạn không có quyền truy cập vào chức năng này. Vui lòng đăng nhập lại hoặc liên hệ quản trị viên.",
             isUser: false,
             isError: true,
             isAuthError: true,
@@ -428,32 +469,33 @@ export const ChatProvider = ({ children }) => {
         return;
       }
       
-      // Kiểm tra và xử lý session_id từ server
-      if (response.session_id) {
-        // Chỉ cập nhật session_id nếu khác với session_id hiện tại
-        if (response.session_id !== currentSessionId) {
-          console.log('Cập nhật session_id mới từ server:', response.session_id);
-          setSessionId(response.session_id);
-          localStorage.setItem(SESSION_ID_KEY, response.session_id);
-          // Reset message count khi nhận session_id mới từ server
+      // Kiểm tra và xử lý conversation_id từ server
+      if (response.conversation_id) {
+        // Chỉ cập nhật conversation_id nếu khác với conversation_id hiện tại
+        if (response.conversation_id !== currentConversationId) {
+          console.log('Cập nhật conversation_id mới từ server:', response.conversation_id);
+          setConversationId(response.conversation_id);
+          localStorage.setItem(SESSION_ID_KEY, response.conversation_id);
+          // Reset message count khi nhận conversation_id mới từ server
           setMessageCount(1);
           localStorage.setItem(MESSAGE_COUNT_KEY, '1');
         }
       } else {
-        console.log('Server không trả về session_id, giữ session_id hiện tại:', currentSessionId);
+        console.log('Server không trả về conversation_id, giữ conversation_id hiện tại:', currentConversationId);
       }
 
       // Thêm phản hồi từ chatbot vào state
       const botMessage = {
         id: Date.now() + 2,
-        text: response.answer,
+        // Sử dụng ai_response từ response cho tương thích với cấu trúc mới
+        text: response.ai_response,
         isUser: false,
         avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp',
-        processingTime: response.processing_time
+        created_at: response.created_at
       };
       
       // Kiểm tra nếu đã đạt giới hạn số câu hỏi
-      if (response.limitReached || newMessageCount >= MAX_MESSAGES_PER_SESSION) {
+      if (newMessageCount >= MAX_MESSAGES_PER_SESSION) {
         console.log('Đã đạt giới hạn tin nhắn, hiển thị thông báo');
         botMessage.isLimitReached = true;
         botMessage.needNewSession = true;
@@ -465,21 +507,6 @@ export const ChatProvider = ({ children }) => {
       // Tăng số lượng tin nhắn chưa đọc nếu chat box đang đóng
       if (!isOpen) {
         setUnreadCount(prev => prev + 1);
-      }
-
-      // Xử lý sản phẩm gợi ý cho tin nhắn bot - chỉ thêm nếu có từ server
-      if (response.recommendedProducts && response.recommendedProducts.length > 0) {
-        console.log('Nhận sản phẩm gợi ý từ server:', response.recommendedProducts.length);
-        setSimilarProducts(prev => ({
-          ...prev,
-          [botMessage.id]: response.recommendedProducts
-        }));
-      }
-      // Không thêm sản phẩm gợi ý ngẫu nhiên nếu không có từ server
-
-      // Log performance metrics
-      if (response.processing_time) {
-        console.log(`Chatbot response time: ${response.processing_time.toFixed(2)}s`);
       }
     } catch (error) {
       console.error('Lỗi khi gửi tin nhắn:', error);
@@ -513,8 +540,8 @@ export const ChatProvider = ({ children }) => {
     setMessages,
     unreadCount,
     setUnreadCount,
-    sessionId,
-    setSessionId,
+    conversationId,
+    setConversationId,
     isLoading,
     handleSendMessage,
     createNewChatSession,

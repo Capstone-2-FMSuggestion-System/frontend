@@ -2,28 +2,32 @@ import api from './api';
 import Cookies from 'js-cookie';
 import { TOKEN_STORAGE } from './authService';
 
-const CHATBOT_API_URL = process.env.REACT_APP_CHATBOT_API_URL || 'http://localhost:8001';
+// URL của base_chat API, lấy từ biến môi trường hoặc mặc định
+const BASE_CHAT_API_URL = process.env.REACT_APP_BASE_CHAT_API_URL || 'http://localhost:8002/api';
 
 const chatApi = api.create({
-  baseURL: CHATBOT_API_URL,
+  baseURL: BASE_CHAT_API_URL,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   }
 });
 
-// Thêm interceptor để gắn token vào mỗi request
+// Biến để theo dõi trạng thái logout để tránh hiển thị nhiều thông báo
+let isHandlingAuthError = false;
+
+// Interceptor để gắn token vào mỗi request
 chatApi.interceptors.request.use(
   (config) => {
-    // Lấy token từ cookie và thêm vào header Authorization
     const token = Cookies.get(TOKEN_STORAGE.ACCESS_TOKEN);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('Token added to chatbot API request:', config.url);
+      // console.log('Token added to base_chat API request:', config.url); // Bỏ comment nếu cần debug
     } else {
-      console.log('No token available for chatbot API request:', config.url);
+      console.warn('No token available for base_chat API request:', config.url);
+      // Tùy chọn: có thể cancel request hoặc throw error nếu token là bắt buộc
+      // return Promise.reject(new Error("No authentication token available"));
     }
-    
     return config;
   },
   (error) => {
@@ -31,160 +35,255 @@ chatApi.interceptors.request.use(
   }
 );
 
-// Thêm interceptor để xử lý các lỗi phản hồi
+// Interceptor để xử lý lỗi phản hồi
 chatApi.interceptors.response.use(
   (response) => {
     return response;
   },
   (error) => {
-    // Ghi log chi tiết về lỗi
-    console.error('Chatbot API error:', {
+    // Ghi log chi tiết hơn về lỗi
+    const errorDetails = {
       url: error.config?.url,
       status: error.response?.status,
       data: error.response?.data,
       message: error.message
-    });
+    };
     
+    console.error('Base_chat API error:', errorDetails);
+    
+    // Xử lý lỗi 401 (Unauthorized) hoặc 403 (Forbidden)
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      // Tránh hiển thị nhiều thông báo cùng lúc
+      if (!isHandlingAuthError) {
+        isHandlingAuthError = true;
+        
+        console.error('Authentication error with @base_chat: Token might be invalid or expired.');
+        
+        // Xóa token hiện tại vì nó không hợp lệ
+        Cookies.remove(TOKEN_STORAGE.ACCESS_TOKEN);
+        
+        // Xóa ID cuộc trò chuyện trong localStorage để tạo mới khi đăng nhập lại
+        localStorage.removeItem('chat_conversation_id');
+        
+        // Thông báo cho người dùng về việc cần đăng nhập lại
+        // Nếu trang có hàm logout toàn cục, gọi nó ở đây
+        // window.dispatchEvent(new Event('AUTHENTICATION_ERROR'));
+        
+        // Sau 2 giây, cho phép hiển thị thông báo mới
+        setTimeout(() => {
+          isHandlingAuthError = false;
+        }, 2000);
+      }
+    }
+    
+    // Tiếp tục reject error để các hàm gọi API có thể xử lý chi tiết
     return Promise.reject(error);
   }
 );
 
-// Tạo cuộc trò chuyện mới - Sử dụng endpoint /new_session
-export const createNewSession = async (userId = null) => {
+// Tạo cuộc trò chuyện mới - Kết nối với /api/newChat của @base_chat
+// API Doc: POST /api/newChat -> Response: NewChatResponse { conversation_id, user_id, created_at, welcome_message }
+export const createNewChat = async () => {
   try {
-    // Gọi API /new_session để tạo phiên mới
-    const sessionResponse = await chatApi.post('/new_session', {});
-    const session_id = sessionResponse.data.session_id;
-    
-    // Ghi log để debug
-    console.log('Đã nhận session_id mới từ API /new_session:', session_id);
-    
-    // Không gửi câu chào đầu tiên nữa, trả về ngay session_id
-    return { 
-      session_id: session_id, 
-      answer: "Xin chào! Tôi có thể giúp gì cho bạn hôm nay?",
-      message: "Phiên chat mới đã được tạo" 
-    };
-  } catch (error) {
-    console.error('Lỗi khi tạo phiên chat mới:', error);
-    
-    // Xử lý lỗi 403 Forbidden khi tạo phiên mới
-    if (error.response && error.response.status === 403) {
-      return { 
-        session_id: null, 
-        answer: "Bạn không có quyền truy cập vào chức năng này. Vui lòng đăng nhập lại hoặc liên hệ quản trị viên.",
-        message: "Lỗi xác thực khi tạo phiên chat",
-        authError: true
-      };
-    }
-    
-    // Fallback để tránh lỗi
-    return { 
-      session_id: null, 
-      answer: "Xin chào! Tôi có thể giúp gì cho bạn hôm nay?",
-      message: "Đã tạo phiên chat cục bộ" 
-    };
-  }
-};
-
-// Gửi câu hỏi tới chatbot
-export const sendMessage = async (question, sessionId, userId = null) => {
-  try {
-    // Chuẩn bị payload với question và session_id
-    const payload = {
-      question,
-      session_id: sessionId
-    };
-    
-    // Chỉ thêm user_id vào payload nếu có giá trị
-    // Không bắt buộc phải có user_id nữa
-    if (userId !== null && userId !== undefined) {
-      payload.user_id = userId;
-    }
-    
-    const response = await chatApi.post('/query', payload);
+    const response = await chatApi.post('/newChat', {});
+    console.log('New chat created with @base_chat:', response.data);
+    // response.data should match NewChatResponse
     return {
-      answer: response.data.answer,
-      session_id: response.data.session_id || sessionId,
-      recommendedProducts: response.data.recommendedProducts || [],
-      processing_time: response.data.processing_time
+      conversation_id: response.data.conversation_id,
+      user_id: response.data.user_id,
+      created_at: response.data.created_at,
+      welcome_message: response.data.welcome_message || "Xin chào! Tôi có thể giúp gì cho bạn?",
+      // Giữ lại message này cho frontend nếu cần, hoặc tạo từ welcome_message
+      message: response.data.welcome_message ? "Phiên chat mới đã được tạo." : "Đã tạo phiên chat, không có tin nhắn chào mừng."
     };
   } catch (error) {
-    console.error('Lỗi khi gửi tin nhắn:', error);
-    
-    // Xử lý trường hợp vượt quá giới hạn câu hỏi (mã 429)
-    if (error.response && error.response.status === 429) {
+    console.error('Lỗi khi tạo phiên chat mới với @base_chat:', error);
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
       return {
-        answer: "Bạn đã đạt giới hạn 30 câu hỏi cho phiên trò chuyện này. Vui lòng bắt đầu phiên mới để tiếp tục.",
-        session_id: sessionId,
-        limitReached: true
+        conversation_id: null,
+        welcome_message: "Lỗi xác thực hoặc không có quyền. Vui lòng đăng nhập lại.",
+        authError: true,
+        isError: true
       };
     }
-    
-    // Xử lý lỗi 403 Forbidden - Không có quyền truy cập
-    if (error.response && error.response.status === 403) {
-      return {
-        answer: "Bạn không có quyền truy cập vào chức năng này. Vui lòng đăng nhập lại hoặc liên hệ quản trị viên.",
-        session_id: sessionId,
-        isError: true,
-        authError: true
-      };
-    }
-    
-    throw error;
+    return {
+      conversation_id: null,
+      welcome_message: "Có lỗi xảy ra khi tạo cuộc trò chuyện mới. Vui lòng thử lại.",
+      isError: true
+    };
   }
 };
 
-// Kiểm tra trạng thái của chatbot service
-export const checkChatbotHealth = async () => {
+// Gửi tin nhắn - Kết nối với /api/chat của @base_chat
+// API Doc: POST /api/chat -> Request: ChatRequest { message: string, conversation_id: Optional[int] }
+// API Doc: Response: ChatResponse { conversation_id, user_message: Dict[str, str], assistant_message: Dict[str, str] }
+export const sendMessageToChat = async (conversationId, userMessage) => {
   try {
-    const response = await chatApi.get('/health');
-    return response.data;
+    if (!conversationId) {
+      console.error("sendMessageToChat: conversationId is required.");
+      return {
+        ai_response: "Lỗi: Không có ID cuộc trò chuyện. Vui lòng bắt đầu cuộc trò chuyện mới.",
+        isError: true,
+      };
+    }
+    const payload = {
+      conversation_id: conversationId,
+      message: userMessage
+    };
+
+    const response = await chatApi.post('/chat', payload);
+    
+    // Xử lý trường hợp user_message là string thay vì dictionary
+    let userMessageObj = response.data.user_message;
+    if (typeof userMessageObj === 'string') {
+      userMessageObj = { role: "user", content: userMessageObj };
+    } else if (!userMessageObj || typeof userMessageObj !== 'object') {
+      userMessageObj = { role: "user", content: userMessage };
+    }
+    
+    // Xử lý trường hợp assistant_message là string thay vì dictionary
+    let assistantMessageObj = response.data.assistant_message;
+    if (typeof assistantMessageObj === 'string') {
+      assistantMessageObj = { role: "assistant", content: assistantMessageObj };
+    } else if (!assistantMessageObj || typeof assistantMessageObj !== 'object') {
+      assistantMessageObj = { role: "assistant", content: "Không nhận được phản hồi" };
+    }
+    
+    return {
+      // Trích xuất content từ assistant_message dictionary
+      ai_response: assistantMessageObj.content || "Không nhận được phản hồi",
+      conversation_id: response.data.conversation_id || conversationId,
+      // Lưu toàn bộ user_message dictionary đã chuẩn hóa
+      user_message: userMessageObj,
+      // Lưu toàn bộ assistant_message dictionary đã chuẩn hóa
+      assistant_message: assistantMessageObj,
+      created_at: response.data.created_at
+    };
   } catch (error) {
-    console.error('Lỗi khi kiểm tra trạng thái chatbot:', error);
-    return { status: "offline" };
+    console.error('Lỗi khi gửi tin nhắn tới @base_chat:', error);
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      return {
+        ai_response: "Lỗi xác thực hoặc không có quyền gửi tin nhắn. Vui lòng đăng nhập lại.",
+        conversation_id: conversationId,
+        authError: true,
+        isError: true
+      };
+    }
+    return {
+        ai_response: "Có lỗi xảy ra khi gửi tin nhắn. Vui lòng thử lại.",
+        conversation_id: conversationId,
+        isError: true
+      };
   }
 };
 
+// Lấy lịch sử trò chuyện - Kết nối với /api/chatContent của @base_chat
+// API Doc: GET /api/chatContent?conversation_id={id}
+// API Doc: Response: ChatContentResponse { conversation_id, user_id, created_at, messages: List[...] }
+export const getChatContent = async (conversationId) => {
+  try {
+    if (!conversationId) {
+      return { messages: [], error: 'Không có conversation_id để tải lịch sử' };
+    }
+    // Đổi 'chat_id' thành 'conversation_id' trong params
+    const response = await chatApi.get(`/chatContent`, { params: { conversation_id: conversationId } });
+    // response.data should match ChatContentResponse
+    return {
+      messages: response.data.messages || [],
+      conversation_id: response.data.conversation_id || conversationId,
+      user_id: response.data.user_id,
+      created_at: response.data.created_at, // created_at của cuộc trò chuyện
+      // question_count: response.data.question_count || 0, // Không có trong ChatContentResponse
+    };
+  } catch (error) {
+    console.error('Lỗi khi lấy lịch sử trò chuyện từ @base_chat:', error);
+    // Xử lý lỗi xác thực
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      console.log('Lỗi xác thực khi tải lịch sử trò chuyện:', error.response.status, error.response.data);
+      return { 
+        messages: [], 
+        error: 'Lỗi xác thực hoặc không có quyền xem lịch sử. Vui lòng đăng nhập lại.', 
+        authError: true, 
+        conversation_id: conversationId 
+      };
+    }
+    // Xử lý lỗi không tìm thấy
+    if (error.response && error.response.status === 404) {
+      return { 
+        messages: [], 
+        error: 'Không tìm thấy phiên chat.', 
+        isError: true,
+        conversation_id: conversationId
+      };
+    }
+    // Xử lý lỗi server (500)
+    if (error.response && error.response.status >= 500) {
+      console.error('Lỗi server khi gọi API chatContent:', error.response.status, error.response.data);
+      // Nếu gặp lỗi 500 từ server, có thể là do lỗi xác thực không được xử lý đúng
+      // Kiểm tra lỗi response để xem có phải lỗi xác thực hay không
+      if (error.response.data && 
+          typeof error.response.data === 'object' && 
+          (error.response.data.detail?.includes('xác thực') || 
+           error.response.data.detail?.includes('token'))) {
+        return { 
+          messages: [], 
+          error: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 
+          authError: true,
+          conversation_id: conversationId
+        };
+      }
+    }
+    // Lỗi khác
+    return { 
+      messages: [], 
+      error: 'Lỗi khi lấy lịch sử trò chuyện. Vui lòng thử lại.', 
+      isError: true,
+      conversation_id: conversationId
+    };
+  }
+};
+
+// Kiểm tra trạng thái của dịch vụ LLM trong @base_chat
+// API Doc: GET /api/llm/status
+// API Doc: Response: { llm_service, service_available, model_name, model_available, model_message }
+export const checkChatServiceHealth = async () => { // Đổi tên hàm cho rõ nghĩa hơn
+  try {
+    const response = await chatApi.get('/llm/status'); // Gọi tới /api/llm/status
+    return {
+      status: response.data.service_available && response.data.model_available ? "online" : "degraded",
+      details: response.data // Trả về toàn bộ chi tiết từ API
+    };
+  } catch (error) {
+    console.error('Lỗi khi kiểm tra trạng thái dịch vụ chat @base_chat (endpoint /api/llm/status):', error);
+    return {
+        status: "offline",
+        details: null,
+        error: "Could not connect or endpoint not available on @base_chat"
+    };
+  }
+};
+
+/*
 // Lấy danh sách sản phẩm tương tự dựa vào câu hỏi
+// Không có API tương ứng trong @base_chat documentation được cung cấp.
 export const getSimilarProducts = async (question, limit = 3) => {
   try {
+    // Cần kiểm tra @base_chat có endpoint /similar-products hoặc tương đương không
     const response = await chatApi.get('/similar-products', {
       params: { query: question, limit }
     });
     return response.data.products || [];
   } catch (error) {
-    console.error('Lỗi khi lấy sản phẩm tương tự:', error);
+    console.error('Lỗi khi lấy sản phẩm tương tự (endpoint cũ /similar-products):', error);
     return [];
   }
 };
-
-// Lấy lịch sử trò chuyện dựa trên session_id
-export const getChatHistory = async (sessionId) => {
-  try {
-    if (!sessionId) {
-      return { messages: [], error: 'Không có session_id' };
-    }
-    
-    const response = await chatApi.get(`/chat_history/${sessionId}`);
-    return {
-      messages: response.data.messages || [],
-      question_count: response.data.question_count || 0,
-      session_id: response.data.session_id
-    };
-  } catch (error) {
-    console.error('Lỗi khi lấy lịch sử trò chuyện:', error);
-    if (error.response && error.response.status === 404) {
-      return { messages: [], error: 'Không tìm thấy phiên chat' };
-    }
-    return { messages: [], error: 'Lỗi khi lấy lịch sử trò chuyện' };
-  }
-};
+*/
 
 export default {
-  createNewSession,
-  sendMessage,
-  checkChatbotHealth,
-  getSimilarProducts,
-  getChatHistory
+  createNewChat,
+  sendMessageToChat,
+  getChatContent,
+  checkChatServiceHealth, // Đổi tên hàm trong export
+  // getSimilarProducts, // Giữ ở dạng bình luận
 };

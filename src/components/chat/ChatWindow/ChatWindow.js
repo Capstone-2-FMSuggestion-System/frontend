@@ -38,7 +38,7 @@ const Container = styled.div`
 `;
 
 // Constants from ChatContext
-const SESSION_ID_KEY = 'chat_session_id';
+const CONVERSATION_ID_KEY = 'chat_conversation_id';
 
 const ChatWindow = () => {
   const { 
@@ -49,7 +49,7 @@ const ChatWindow = () => {
     handleSendMessage, 
     createNewChatSession,
     similarProducts,
-    setSessionId
+    setConversationId
   } = useChat();
   
   const chatContainerRef = useRef();
@@ -87,10 +87,10 @@ const ChatWindow = () => {
   }, [isOpen, setIsOpen]);
 
   const startNewChat = () => {
-    // Xóa session_id từ localStorage để đảm bảo tạo phiên mới hoàn toàn
-    localStorage.removeItem(SESSION_ID_KEY);
-    // Đặt sessionId trong state về null
-    setSessionId(null);
+    // Xóa conversation_id từ localStorage để đảm bảo tạo phiên mới hoàn toàn
+    localStorage.removeItem(CONVERSATION_ID_KEY);
+    // Đặt conversationId trong state về null
+    setConversationId(null);
     createNewChatSession(true);
   };
 
