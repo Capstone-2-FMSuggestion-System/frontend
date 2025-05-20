@@ -186,6 +186,7 @@ const CategoryCard = styled(Link)`
   overflow: hidden;
   text-decoration: none;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
 
   img {
     width: 100%;
@@ -196,6 +197,14 @@ const CategoryCard = styled(Link)`
 
   &:hover img {
     transform: scale(1.05);
+  }
+
+  &:focus {
+    outline: none;
+  }
+
+  &:active {
+    transform: scale(0.98);
   }
 
   .overlay {
@@ -300,6 +309,10 @@ const Home = () => {
     fetchData();
   }, []);
 
+  const handleCategoryClick = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <MainLayout>
       <HeroSection>
@@ -403,8 +416,11 @@ const Home = () => {
           ) : (
             categories.slice(0, 6).map((category) => (
               <CategoryCard
+                to={`/category/${category.category_id}`}
                 key={category.category_id}
-                to={`/categories/${category.category_id}`}
+                onClick={handleCategoryClick}
+                tabIndex={0}
+                aria-label={`Xem danh mục ${category.name}`}
               >
                 <img
                   src={category.description || "/images/categories/default.jpg"}
