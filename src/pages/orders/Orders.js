@@ -196,7 +196,7 @@ const Orders = () => {
 
       if (response && Array.isArray(response)) {
         const processedOrders = response.map(order => {
-          console.log('Processing order:', order);
+          // console.log('Processing order:', order);
           return {
             order_id: order.order_id || order.id,
             created_at: order.created_at || order.createdAt,
@@ -211,7 +211,7 @@ const Orders = () => {
             }]
           };
         });
-        console.log('Processed orders:', processedOrders);
+        // console.log('Processed orders:', processedOrders);
         setOrders(processedOrders);
       } else {
         console.log('No orders found or invalid data structure');

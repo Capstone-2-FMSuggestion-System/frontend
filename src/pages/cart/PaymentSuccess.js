@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
-import { FaCheckCircle, FaHome, FaListAlt } from 'react-icons/fa';
+import { FaCheckCircle, FaHome, FaListAlt, FaTag } from 'react-icons/fa';
 import MainLayout from '../../layouts/MainLayout';
 import Button from '../../components/common/Button/Button';
 
@@ -39,22 +39,40 @@ const OrderInfo = styled.div`
   padding: 20px;
   border-radius: 4px;
   margin-bottom: 30px;
+  text-align: left;
 `;
 
 const OrderDetail = styled.div`
   display: flex;
   justify-content: space-between;
   margin-bottom: 10px;
-  
-  &:last-child {
-    margin-bottom: 0;
-    padding-top: 10px;
-    border-top: 1px dashed #ddd;
-    font-weight: 600;
-  }
+  padding: ${props => props.total ? '10px 0 0 0' : '0'};
+  border-top: ${props => props.total ? '1px dashed #ddd' : 'none'};
+  font-weight: ${props => props.total ? '600' : 'normal'};
   
   span:first-child {
     color: #666;
+  }
+  
+  span:last-child {
+    font-weight: ${props => props.bold ? '600' : 'normal'};
+    color: ${props => props.discount ? '#e53935' : 'inherit'};
+  }
+`;
+
+const CouponTag = styled.div`
+  display: inline-flex;
+  align-items: center;
+  background-color: #e3f2fd;
+  color: #1976d2;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 5px;
+  
+  svg {
+    margin-right: 5px;
   }
 `;
 
@@ -73,15 +91,42 @@ const PaymentSuccess = () => {
   const order = location.state?.order || {};
 
   const getPaymentMethodText = (method) => {
-    switch (method) {
+    switch (method?.toLowerCase()) {
       case 'cod':
         return 'Thanh toán khi nhận hàng (COD)';
       case 'payos':
         return 'Thanh toán qua PayOS';
       default:
-        return 'Thanh toán';
+        return method || 'Thanh toán';
     }
   };
+
+  // Format số tiền thành định dạng đẹp
+  const formatCurrency = (amount) => {
+    if (!amount && amount !== 0) return '0đ';
+    return `${Number(amount).toLocaleString('vi-VN')}đ`;
+  };
+
+  // Tính lại tổng tiền để đảm bảo đúng sau khi áp dụng giảm giá
+  const calculateFinalTotal = () => {
+    const subtotal = Number(order.subtotal) || 0;
+    const discount = Number(order.discount_amount) || 0;
+    
+    // Đảm bảo tổng tiền không âm
+    return Math.max(0, subtotal - discount);
+  };
+
+  // Xác định xem có phải giảm giá 100% hay không
+  const isFullyDiscounted = () => {
+    const subtotal = Number(order.subtotal) || 0;
+    const discount = Number(order.discount_amount) || 0;
+    
+    // Kiểm tra nếu giảm giá chiếm ít nhất 99.9% giá trị
+    return subtotal > 0 && (discount / subtotal >= 0.999);
+  };
+
+  // Sử dụng giá trị được tính toán lại để hiển thị
+  const finalTotal = calculateFinalTotal();
 
   return (
     <MainLayout>
@@ -94,13 +139,13 @@ const PaymentSuccess = () => {
 
         <Message>
           Đơn hàng của bạn đã được đặt thành công. Chúng tôi đã gửi email xác nhận với tất cả thông tin chi tiết.
-          Chúng tôi sẽ xử lý đơn hàng của bạn trong thời gian sớm nhất.
+          {isFullyDiscounted() ? ' Đơn hàng của bạn đã được giảm giá 100%.' : ' Chúng tôi sẽ xử lý đơn hàng của bạn trong thời gian sớm nhất.'}
         </Message>
 
         <OrderInfo>
           <OrderDetail>
             <span>Mã đơn hàng:</span>
-            <span>#{order.id || '12345678'}</span>
+            <span>#{order.id || order.order_id || '12345678'}</span>
           </OrderDetail>
 
           <OrderDetail>
@@ -110,13 +155,34 @@ const PaymentSuccess = () => {
 
           <OrderDetail>
             <span>Phương thức thanh toán:</span>
-            <span>{getPaymentMethodText(order.paymentMethod)}</span>
+            <span>{getPaymentMethodText(order.paymentMethod || order.payment_method)}</span>
           </OrderDetail>
 
+          {/* Luôn hiển thị thông tin chi tiết giá */}
           <OrderDetail>
-            <span>Tổng tiền:</span>
-            <span>{order.total ? `${order.total.toLocaleString('vi-VN')}đ` : '0đ'}</span>
+            <span>Thành giá:</span>
+            <span>{formatCurrency(order.subtotal)}</span>
           </OrderDetail>
+          
+          <OrderDetail discount={true}>
+            <span>Giảm giá:</span>
+            <span>-{formatCurrency(order.discount_amount)}</span>
+          </OrderDetail>
+          
+          <OrderDetail total={true} bold={true}>
+            <span>Tổng tiền:</span>
+            <span>{formatCurrency(finalTotal)}</span>
+          </OrderDetail>
+          
+          {order.coupon_code && (
+            <div style={{ marginTop: '10px' }}>
+              <span>Mã giảm giá đã dùng:</span>
+              <br />
+              <CouponTag>
+                <FaTag /> {order.coupon_code}
+              </CouponTag>
+            </div>
+          )}
         </OrderInfo>
 
         <ButtonGroup>

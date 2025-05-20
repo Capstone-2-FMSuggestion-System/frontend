@@ -372,16 +372,20 @@ const OrderList = () => {
                 </TableHead>
                 <TableBody>
                   {orders.map((order) => (
-                    <tr key={order.id}>
-                      <td>{order.product_name}</td>
-                      <td>{order.customer_name}</td>
-                      <td>{order.phone_number}</td>
-                      <td>{order.email}</td>
-                      <td>{order.address}</td>
-                      <td>{order.total_amount.toLocaleString('vi-VN')} đ</td>
+                    <tr key={order.order_id}>
+                      <td>{order.first_product_name || "N/A"}</td>
+                      <td>{order.customer_name || "N/A"}</td>
+                      <td>{order.phone_number || "N/A"}</td>
+                      <td>{order.email || "N/A"}</td>
+                      <td>{order.address || "N/A"}</td>
+                      <td>{order.total_amount ? 
+                          (typeof order.total_amount === 'number' ? 
+                           order.total_amount.toLocaleString('vi-VN') : 
+                           parseFloat(order.total_amount).toLocaleString('vi-VN')) : 
+                          "0"} đ</td>
                       <td>
                         <ShippingBadge className={order.shipping_method === 'Nhanh' ? 'fast' : 'standard'}>
-                          {order.shipping_method}
+                          {order.shipping_method || "N/A"}
                         </ShippingBadge>
                       </td>
                       <td>

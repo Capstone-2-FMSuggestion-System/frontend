@@ -32,6 +32,7 @@ import SearchResults from './pages/SearchResults';
 import Cart from './pages/cart/Cart';
 import Checkout from './pages/cart/Checkout';
 import PaymentSuccess from './pages/cart/PaymentSuccess';
+import PaymentCallback from './pages/cart/PaymentCallback';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
@@ -73,6 +74,10 @@ const App = () => {
                       <Route path="/search" element={<SearchResults />} />
                       <Route path="/cart" element={<Cart />} />
                       <Route path="/about" element={<About />} />
+                      
+                      {/* Payment Routes */}
+                      <Route path="/payment/success" element={<PaymentCallback />} />
+                      <Route path="/payment/cancel" element={<PaymentCallback />} />
 
                       {/* Auth Routes */}
                       <Route path="/login" element={

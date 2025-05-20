@@ -205,12 +205,12 @@ const authService = {
   // Get current user
   getCurrentUser: async () => {
     try {
-      console.log('Attempting to get current user');
+      // console.log('Attempting to get current user');
       // Get tokens using tokenUtils
       const { accessToken, tokenExpiry } = tokenUtils.getTokens();
 
       if (!accessToken) {
-        console.log('No access token found, user is not authenticated');
+        // console.log('No access token found, user is not authenticated');
         return null;
       }
 
@@ -249,7 +249,7 @@ const authService = {
       }
 
       // Get user profile with the (potentially refreshed) token
-      console.log('Fetching user profile from API');
+      // console.log('Fetching user profile from API');
       const response = await api.get('/api/auth/me');
 
       // Validate user data
@@ -258,7 +258,7 @@ const authService = {
         return null;
       }
 
-      console.log('Current user fetched successfully');
+      // console.log('Current user fetched successfully');
       return response.data;
     } catch (error) {
       console.error('Get current user error:', error);
@@ -627,7 +627,7 @@ const authService = {
   // Get user cart from server
   getUserCart: async () => {
     try {
-      console.log('Fetching user cart from server');
+      // console.log('Fetching user cart from server');
       const response = await api.get('/api/users/cart');
 
       if (response.data) {
@@ -663,7 +663,7 @@ const authService = {
           totalAmount: totalAmount
         };
 
-        console.log('User cart fetched successfully:', cartData);
+        // console.log('User cart fetched successfully:', cartData);
         return cartData;
       }
 

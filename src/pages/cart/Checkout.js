@@ -263,21 +263,24 @@ const Checkout = () => {
         return;
       }
 
-      // Tính tổng tiền sản phẩm (không cộng phí ship cho PayOS)
-      const subtotal = cart.items.reduce((sum, item) => sum + (Number(item.discountPrice || item.price) || 0) * item.quantity, 0);
-      const discount = Number(cart.discount) || 0;
-      let shippingFee = 0;
-      let total = subtotal;
-      if (values.paymentMethod === 'cod') {
-        shippingFee = cart.totalAmount > 200000 ? 0 : 20000;
-        total = subtotal + shippingFee - discount;
-      }
+      // Sử dụng giá đã được giảm nếu có
+      const subtotal = Number(parseFloat(cart.totalAmount).toFixed(2)) || 0;
+      const discount = Number(parseFloat(cart.discount).toFixed(2)) || 0;
+      const finalTotalItemsPrice = Number(parseFloat(cart.discountedTotal).toFixed(2)) || subtotal;
+      
+      // Tính phần trăm giảm giá thực tế
+      const discountPercentage = subtotal > 0 ? (discount / subtotal) * 100 : 0;
+      
+      // Phí vận chuyển đã được loại bỏ, nên không cần tính toán hay cộng vào total nữa.
+      const totalForOrder = finalTotalItemsPrice;
 
-      console.log('Cart details:', {
-        subtotal,
-        shippingFee,
+      console.log('Cart details (shipping excluded):', {
+        subtotal, // Tổng tiền hàng ban đầu
         discount,
-        total
+        discountPercentage,
+        finalItemsPrice: finalTotalItemsPrice, // Giá cuối cùng của các mặt hàng sau giảm giá
+        totalForOrder, // Tổng tiền cuối cùng cho đơn hàng (bằng finalItemsPrice vì không có ship)
+        couponCode: cart.couponCode
       });
 
       // Prepare cart items in the format backend expects
@@ -290,8 +293,8 @@ const Checkout = () => {
       // Prepare order data theo phương thức thanh toán
       const orderData = {
         user_id: currentUser.user_id,
-        total_amount: total,
-        payment_method: values.paymentMethod === 'cod' ? 'COD' : 'payos',
+        total_amount: totalForOrder,
+        payment_method: values.paymentMethod === 'cod' ? 'COD' : 'PayOS',
         items: cartItems,
         status: 'pending',
         recipient_name: `${values.firstName} ${values.lastName}`,
@@ -299,7 +302,11 @@ const Checkout = () => {
         shipping_address: values.address,
         shipping_city: values.city,
         shipping_province: values.province || '',
-        shipping_postal_code: values.zipCode
+        shipping_postal_code: values.zipCode,
+        discount_amount: discount,
+        coupon_code: cart.couponCode,
+        subtotal: subtotal,
+        notes: values.notes || ''
       };
 
       console.log('Submitting order data:', orderData);
@@ -319,15 +326,18 @@ const Checkout = () => {
           state: {
             order: {
               ...order,
-              total: total,
-              paymentMethod: 'COD',
-              id: order.order_id || order.id
+              id: order.order_id || order.id,
+              payment_method: 'COD',
+              discount_amount: discount,
+              coupon_code: cart.couponCode,
+              subtotal: subtotal
             }
           }
         });
       } else if (values.paymentMethod === 'payos') {
         console.log('Creating PayOS order...');
         // Gọi API thanh toán PayOS
+        // orderData ở đây đã có total_amount là totalForOrder (không ship)
         const payosResponse = await payosService.createOrder(orderData);
         console.log('PayOS order created:', payosResponse);
 
@@ -359,145 +369,179 @@ const Checkout = () => {
           validationSchema={validationSchema}
           onSubmit={handleSubmit}
         >
-          {({ values, isSubmitting, setFieldValue }) => (
-            <Form>
-              <CheckoutContent>
-                <CheckoutForm>
-                  <SectionTitle>Shipping Information</SectionTitle>
+          {({ values, isSubmitting, setFieldValue }) => {
+            // Tính toán giá trị đơn hàng
+            const subtotal = Number(parseFloat(cart.totalAmount).toFixed(2)) || 0;
+            const discount = Number(parseFloat(cart.discount).toFixed(2)) || 0;
+            const finalTotalPrice = Number(parseFloat(cart.discountedTotal).toFixed(2)) || subtotal;
+            
+            // Tính phần trăm giảm giá thực tế
+            const discountPercentage = subtotal > 0 ? (discount / subtotal) * 100 : 0;
+            
+            // Chỉ coi là giảm 100% khi thực sự giảm gần như toàn bộ giá trị (>=99.9%) VÀ có mã giảm giá được áp dụng
+            const hasCouponApplied = cart.couponCode && cart.couponCode.length > 0;
+            const isFullyDiscounted = (discountPercentage >= 99.9 || finalTotalPrice === 0) && hasCouponApplied;
+            
+            console.log('Checkout info:', {
+              subtotal,
+              discount,
+              finalTotalPrice,
+              discountPercentage,
+              isFullyDiscounted,
+              hasCouponApplied
+            });
+            
+            // Nếu tổng tiền là 0 và phương thức thanh toán hiện tại là PayOS, tự động chuyển về COD
+            if (isFullyDiscounted && values.paymentMethod === 'payos') {
+              // Sử dụng setTimeout để tránh warning "Cannot update a component while rendering a different component"
+              setTimeout(() => {
+                setFieldValue('paymentMethod', 'cod');
+                setSelectedPayment('cod');
+              }, 0);
+            }
+            
+            return (
+              <Form>
+                <CheckoutContent>
+                  <CheckoutForm>
+                    <SectionTitle>Shipping Information</SectionTitle>
 
-                  <FormRow cols={2}>
+                    <FormRow cols={2}>
+                      <FormGroup>
+                        <Label htmlFor="firstName">First Name</Label>
+                        <Input type="text" id="firstName" name="firstName" />
+                        <ErrorMessage name="firstName" component={ErrorText} />
+                      </FormGroup>
+
+                      <FormGroup>
+                        <Label htmlFor="lastName">Last Name</Label>
+                        <Input type="text" id="lastName" name="lastName" />
+                        <ErrorMessage name="lastName" component={ErrorText} />
+                      </FormGroup>
+                    </FormRow>
+
+                    <FormRow cols={2}>
+                      <FormGroup>
+                        <Label htmlFor="email">Email</Label>
+                        <Input type="email" id="email" name="email" />
+                        <ErrorMessage name="email" component={ErrorText} />
+                      </FormGroup>
+
+                      <FormGroup>
+                        <Label htmlFor="phone">Phone</Label>
+                        <Input type="tel" id="phone" name="phone" />
+                        <ErrorMessage name="phone" component={ErrorText} />
+                      </FormGroup>
+                    </FormRow>
+
                     <FormGroup>
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input type="text" id="firstName" name="firstName" />
-                      <ErrorMessage name="firstName" component={ErrorText} />
+                      <Label htmlFor="address">Address</Label>
+                      <Input type="text" id="address" name="address" />
+                      <ErrorMessage name="address" component={ErrorText} />
                     </FormGroup>
 
-                    <FormGroup>
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input type="text" id="lastName" name="lastName" />
-                      <ErrorMessage name="lastName" component={ErrorText} />
-                    </FormGroup>
-                  </FormRow>
+                    <FormRow cols={2}>
+                      <FormGroup>
+                        <Label htmlFor="city">City</Label>
+                        <Input type="text" id="city" name="city" />
+                        <ErrorMessage name="city" component={ErrorText} />
+                      </FormGroup>
 
-                  <FormRow cols={2}>
-                    <FormGroup>
-                      <Label htmlFor="email">Email</Label>
-                      <Input type="email" id="email" name="email" />
-                      <ErrorMessage name="email" component={ErrorText} />
-                    </FormGroup>
+                      <FormGroup>
+                        <Label htmlFor="zipCode">ZIP Code</Label>
+                        <Input type="text" id="zipCode" name="zipCode" />
+                        <ErrorMessage name="zipCode" component={ErrorText} />
+                      </FormGroup>
+                    </FormRow>
 
-                    <FormGroup>
-                      <Label htmlFor="phone">Phone</Label>
-                      <Input type="tel" id="phone" name="phone" />
-                      <ErrorMessage name="phone" component={ErrorText} />
-                    </FormGroup>
-                  </FormRow>
+                    <SectionTitle>Phương thức thanh toán</SectionTitle>
 
-                  <FormGroup>
-                    <Label htmlFor="address">Address</Label>
-                    <Input type="text" id="address" name="address" />
-                    <ErrorMessage name="address" component={ErrorText} />
-                  </FormGroup>
-
-                  <FormRow cols={2}>
-                    <FormGroup>
-                      <Label htmlFor="city">City</Label>
-                      <Input type="text" id="city" name="city" />
-                      <ErrorMessage name="city" component={ErrorText} />
-                    </FormGroup>
+                    <InfoMessage>
+                      <FaInfoCircle />
+                      <p>{isFullyDiscounted 
+                        ? 'Đơn hàng đã được giảm 100% giá trị. Phương thức thanh toán khi nhận hàng được tự động chọn.'
+                        : 'Vui lòng chọn một trong hai phương thức thanh toán dưới đây để hoàn tất đơn hàng.'}</p>
+                    </InfoMessage>
 
                     <FormGroup>
-                      <Label htmlFor="zipCode">ZIP Code</Label>
-                      <Input type="text" id="zipCode" name="zipCode" />
-                      <ErrorMessage name="zipCode" component={ErrorText} />
-                    </FormGroup>
-                  </FormRow>
+                      <RadioGroup>
+                        <RadioOption selected={values.paymentMethod === 'cod'}>
+                          <Field
+                            type="radio"
+                            name="paymentMethod"
+                            value="cod"
+                            checked={values.paymentMethod === 'cod'}
+                            onChange={() => {
+                              setFieldValue('paymentMethod', 'cod');
+                              setSelectedPayment('cod');
+                            }}
+                          />
+                          <PaymentIcon color="#ffc107">
+                            <FaMoneyBillWave />
+                          </PaymentIcon>
+                          <PaymentInfo>
+                            <h4>Thanh toán khi nhận hàng (COD)</h4>
+                            <p>Bạn sẽ thanh toán bằng tiền mặt khi nhận hàng</p>
+                          </PaymentInfo>
+                        </RadioOption>
 
-                  <SectionTitle>Phương thức thanh toán</SectionTitle>
-
-                  <InfoMessage>
-                    <FaInfoCircle />
-                    <p>Vui lòng chọn một trong hai phương thức thanh toán dưới đây để hoàn tất đơn hàng.</p>
-                  </InfoMessage>
-
-                  <FormGroup>
-                    <RadioGroup>
-                      <RadioOption selected={values.paymentMethod === 'cod'}>
-                        <Field
-                          type="radio"
-                          name="paymentMethod"
-                          value="cod"
-                          checked={values.paymentMethod === 'cod'}
-                          onChange={() => {
-                            setFieldValue('paymentMethod', 'cod');
-                            setSelectedPayment('cod');
+                        <RadioOption 
+                          selected={values.paymentMethod === 'payos'}
+                          style={{ 
+                            opacity: isFullyDiscounted ? 0.5 : 1,
+                            cursor: isFullyDiscounted ? 'not-allowed' : 'pointer',
+                            position: 'relative'
                           }}
-                        />
-                        <PaymentIcon color="#ffc107">
-                          <FaMoneyBillWave />
-                        </PaymentIcon>
-                        <PaymentInfo>
-                          <h4>Thanh toán khi nhận hàng (COD)</h4>
-                          <p>Bạn sẽ thanh toán bằng tiền mặt khi nhận hàng</p>
-                        </PaymentInfo>
-                      </RadioOption>
+                        >
+                          <Field
+                            type="radio"
+                            name="paymentMethod"
+                            value="payos"
+                            checked={values.paymentMethod === 'payos'}
+                            onChange={() => {
+                              if (!isFullyDiscounted) {
+                                setFieldValue('paymentMethod', 'payos');
+                                setSelectedPayment('payos');
+                              }
+                            }}
+                            disabled={isFullyDiscounted}
+                          />
+                          <PaymentIcon color="#2196f3">
+                            <FaCreditCard />
+                          </PaymentIcon>
+                          <PaymentInfo>
+                            <h4>Thanh toán online qua PayOS</h4>
+                            <p>Thanh toán an toàn bằng thẻ ATM, VISA, MasterCard và các ví điện tử</p>
+                          </PaymentInfo>
+                        </RadioOption>
+                      </RadioGroup>
 
-                      <RadioOption selected={values.paymentMethod === 'payos'}>
-                        <Field
-                          type="radio"
-                          name="paymentMethod"
-                          value="payos"
-                          checked={values.paymentMethod === 'payos'}
-                          onChange={() => {
-                            setFieldValue('paymentMethod', 'payos');
-                            setSelectedPayment('payos');
-                          }}
-                        />
-                        <PaymentIcon color="#2196f3">
-                          <FaCreditCard />
-                        </PaymentIcon>
-                        <PaymentInfo>
-                          <h4>Thanh toán online qua PayOS</h4>
-                          <p>Thanh toán an toàn bằng thẻ ATM, VISA, MasterCard và các ví điện tử</p>
-                        </PaymentInfo>
-                      </RadioOption>
-                    </RadioGroup>
+                      <PaymentDetails visible={selectedPayment === 'cod'}>
+                        <p>Bạn sẽ thanh toán khi nhận hàng. Vui lòng chuẩn bị đúng số tiền.</p>
+                      </PaymentDetails>
 
-                    <PaymentDetails visible={selectedPayment === 'cod'}>
-                      <p>Bạn sẽ thanh toán khi nhận hàng. Vui lòng chuẩn bị đúng số tiền.</p>
-                    </PaymentDetails>
+                      <PaymentDetails visible={selectedPayment === 'payos'}>
+                        <p>Bạn sẽ được chuyển đến cổng thanh toán PayOS để hoàn tất giao dịch.</p>
+                        <p>Hỗ trợ thanh toán bằng thẻ ATM/VISA/Mastercard và ví điện tử.</p>
+                      </PaymentDetails>
+                    </FormGroup>
 
-                    <PaymentDetails visible={selectedPayment === 'payos'}>
-                      <p>Bạn sẽ được chuyển đến cổng thanh toán PayOS để hoàn tất giao dịch.</p>
-                      <p>Hỗ trợ thanh toán bằng thẻ ATM/VISA/Mastercard và ví điện tử.</p>
-                    </PaymentDetails>
-                  </FormGroup>
+                    <FormGroup>
+                      <Label htmlFor="notes">Order Notes (Optional)</Label>
+                      <TextArea
+                        as="textarea"
+                        id="notes"
+                        name="notes"
+                        placeholder="Special instructions for delivery"
+                      />
+                    </FormGroup>
+                  </CheckoutForm>
 
-                  <FormGroup>
-                    <Label htmlFor="notes">Order Notes (Optional)</Label>
-                    <TextArea
-                      as="textarea"
-                      id="notes"
-                      name="notes"
-                      placeholder="Special instructions for delivery"
-                    />
-                  </FormGroup>
-
-                  <OrderButton
-                    type="submit"
-                    variant="secondary"
-                    size="large"
-                    fullWidth
-                    disabled={isSubmitting}
-                  >
-                    Place Order
-                  </OrderButton>
-                </CheckoutForm>
-
-                <CartSummary />
-              </CheckoutContent>
-            </Form>
-          )}
+                  <CartSummary />
+                </CheckoutContent>
+              </Form>
+            );
+          }}
         </Formik>
       </CheckoutContainer>
     </MainLayout>

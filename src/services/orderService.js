@@ -40,7 +40,9 @@ const orderService = {
         shipping_city: orderData.shipping_city,
         shipping_province: orderData.shipping_province,
         shipping_postal_code: orderData.shipping_postal_code,
-        notes: orderData.notes || ''
+        notes: orderData.notes || '',
+        discount_amount: orderData.discount_amount || 0,
+        coupon_code: orderData.coupon_code || null
       };
 
       // Use the correct endpoint
@@ -89,10 +91,179 @@ const orderService = {
     }
   },
 
+  // Create PayOS order for online payment
+  createPayosOrder: async (orderData) => {
+    try {
+      console.log('Creating PayOS order with data:', orderData);
+
+      // Format data for PayOS payment
+      const formattedData = {
+        user_id: orderData.user_id,
+        total_amount: orderData.total_amount,
+        payment_method: 'payos',
+        items: orderData.items,
+        cart_items: orderData.cart_items || [],
+        status: 'pending',
+        recipient_name: orderData.recipient_name,
+        recipient_phone: orderData.recipient_phone,
+        shipping_address: orderData.shipping_address,
+        shipping_city: orderData.shipping_city,
+        shipping_province: orderData.shipping_province || '',
+        shipping_postal_code: orderData.shipping_postal_code,
+        notes: orderData.notes || '',
+        discount_amount: orderData.discount_amount || 0,
+        coupon_code: orderData.coupon_code || null
+      };
+
+      // Use PayOS payment endpoint
+      const endpoint = `${API_URL}/api/payments/payos/create`;
+
+      // Add authorization header
+      const token = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('accessToken='))
+        ?.split('=')[1];
+
+      if (!token) {
+        throw new Error('Không tìm thấy token xác thực. Vui lòng đăng nhập lại.');
+      }
+
+      console.log('Sending PayOS request to endpoint:', endpoint);
+      console.log('PayOS request data:', formattedData);
+
+      const response = await axios.post(endpoint, formattedData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('Create PayOS order response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('PayOS create order error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data, 
+        status: error.response?.status
+      });
+
+      if (error.response) {
+        console.error('Server response error details:', error.response.data);
+      }
+
+      if (error.code === 'ERR_NETWORK') {
+        throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra lại kết nối mạng hoặc thử lại sau.');
+      }
+      if (error.response) {
+        throw new Error(error.response.data?.detail || error.response.data?.message || `Lỗi server: ${error.response.status}`);
+      } else if (error.request) {
+        throw new Error('Không nhận được phản hồi từ server. Vui lòng thử lại sau.');
+      } else {
+        throw new Error('Có lỗi xảy ra khi gửi yêu cầu thanh toán. Vui lòng thử lại sau.');
+      }
+    }
+  },
+  
+  // Apply coupon code to an existing order
+  applyCouponToOrder: async (orderId, couponCode) => {
+    try {
+      console.log(`Applying coupon ${couponCode} to order ${orderId}`);
+
+      // Add authorization header
+      const token = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('accessToken='))
+        ?.split('=')[1];
+
+      if (!token) {
+        throw new Error('Không tìm thấy token xác thực. Vui lòng đăng nhập lại.');
+      }
+
+      // Use coupon endpoint
+      const endpoint = `${API_URL}/api/e-commerce/orders/${orderId}/apply-coupon`;
+      
+      const response = await axios.post(
+        endpoint,
+        { coupon_code: couponCode },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      console.log('Apply coupon response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Apply coupon error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+
+      if (error.code === 'ERR_NETWORK') {
+        throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra lại kết nối mạng.');
+      }
+      if (error.response) {
+        throw new Error(error.response.data?.detail || error.response.data?.message || `Lỗi server: ${error.response.status}`);
+      } else if (error.request) {
+        throw new Error('Không nhận được phản hồi từ server.');
+      } else {
+        throw new Error('Có lỗi xảy ra khi áp dụng mã giảm giá.');
+      }
+    }
+  },
+
+  // Get cart summary with optional coupon code
+  getCartSummary: async (couponCode = null) => {
+    try {
+      // Add authorization header
+      const token = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('accessToken='))
+        ?.split('=')[1];
+
+      if (!token) {
+        throw new Error('Không tìm thấy token xác thực. Vui lòng đăng nhập lại.');
+      }
+
+      // Build endpoint with optional coupon parameter
+      let endpoint = `${API_URL}/api/e-commerce/cart/summary`;
+      if (couponCode) {
+        endpoint += `?coupon_code=${encodeURIComponent(couponCode)}`;
+      }
+      
+      const response = await axios.get(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('Cart summary response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Get cart summary error:', error);
+      
+      if (error.code === 'ERR_NETWORK') {
+        throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra lại kết nối mạng.');
+      }
+      if (error.response) {
+        throw new Error(error.response.data?.detail || error.response.data?.message || `Lỗi server: ${error.response.status}`);
+      } else if (error.request) {
+        throw new Error('Không nhận được phản hồi từ server.');
+      } else {
+        throw new Error('Có lỗi xảy ra khi tính tổng giỏ hàng.');
+      }
+    }
+  },
+
   // Get order by ID
   getOrderById: async (orderId) => {
     try {
-      console.log('Getting order by ID:', orderId);
+      // console.log('Getting order by ID:', orderId);
 
       // Lấy token từ cookie
       const token = document.cookie
@@ -111,13 +282,13 @@ const orderService = {
         }
       });
 
-      console.log('Raw API Response:', JSON.stringify(response.data, null, 2));
-      console.log('recipient_name:', response.data.recipient_name);
-      console.log('recipient_phone:', response.data.recipient_phone);
-      console.log('shipping_address:', response.data.shipping_address);
-      console.log('shipping_city:', response.data.shipping_city);
-      console.log('shipping_province:', response.data.shipping_province);
-      console.log('shipping_postal_code:', response.data.shipping_postal_code);
+      // console.log('Raw API Response:', JSON.stringify(response.data, null, 2));
+      // console.log('recipient_name:', response.data.recipient_name);
+      // console.log('recipient_phone:', response.data.recipient_phone);
+      // console.log('shipping_address:', response.data.shipping_address);
+      // console.log('shipping_city:', response.data.shipping_city);
+      // console.log('shipping_province:', response.data.shipping_province);
+      // console.log('shipping_postal_code:', response.data.shipping_postal_code);
 
       // Xử lý dữ liệu trả về
       const orderData = response.data;
@@ -126,11 +297,11 @@ const orderService = {
       }
 
       // Log dữ liệu địa chỉ giao hàng
-      console.log('Shipping address data:', {
-        raw: orderData.shipping_address,
-        customer: orderData.customer,
-        delivery: orderData.delivery_info
-      });
+      // console.log('Shipping address data:', {
+      //   raw: orderData.shipping_address,
+      //   customer: orderData.customer,
+      //   delivery: orderData.delivery_info
+      // });
 
       // Xử lý địa chỉ giao hàng
       const shippingAddress = {
@@ -142,7 +313,7 @@ const orderService = {
         postalCode: orderData.shipping_postal_code || 'Chưa cập nhật'
       };
 
-      console.log('Processed shipping address:', shippingAddress);
+      // console.log('Processed shipping address:', shippingAddress);
 
       // Chuyển đổi dữ liệu sang định dạng mong muốn
       const processedOrder = {
@@ -155,24 +326,32 @@ const orderService = {
         shippingFee: orderData.shipping_fee || orderData.shippingFee || 0,
         discount: orderData.discount || 0,
         total: orderData.total || orderData.total_amount || 0,
-        items: Array.isArray(orderData.items) ? orderData.items.map(item => ({
-          id: item.id || item.product_id,
-          product_id: item.product_id,
-          product: {
-            id: item.product?.id || item.product_id,
-            name: item.product?.name || item.product_name || 'Sản phẩm',
-            image: item.product?.image || item.product_image || '/images/placeholder.png',
-            price: item.product?.price || item.price || 0
-          },
-          quantity: item.quantity || 1,
-          price: item.price || 0,
-          total: item.total || (item.price * item.quantity) || 0
-        })) : [],
+        items: Array.isArray(orderData.items) ? orderData.items.map(item => {
+          // Lấy thông tin sản phẩm và hình ảnh
+          const productInfo = item.product || {};
+          
+          // Đảm bảo rằng images được truyền đúng cách
+          const images = Array.isArray(productInfo.images) ? productInfo.images : [];
+          
+          return {
+            id: item.id || item.product_id,
+            product_id: item.product_id,
+            product: {
+              id: productInfo.id || item.product_id,
+              name: productInfo.name || item.product_name || 'Sản phẩm',
+              price: productInfo.price || item.price || 0,
+              images: images // Thêm images vào product
+            },
+            quantity: item.quantity || 1,
+            price: item.price || 0,
+            total: item.total || (item.price * item.quantity) || 0
+          };
+        }) : [],
         shippingAddress,
         estimatedDelivery: orderData.estimated_delivery || orderData.estimatedDelivery
       };
 
-      console.log('Final processed order data:', processedOrder);
+      // console.log('Final processed order data:', processedOrder);
       return processedOrder;
     } catch (error) {
       console.error('Get order error:', error);
@@ -197,7 +376,7 @@ const orderService = {
         .find(row => row.startsWith('accessToken='))
         ?.split('=')[1];
 
-      console.log('Token found:', !!token);
+      // console.log('Token found:', !!token);
 
       if (!token) {
         throw new Error('Không tìm thấy token xác thực. Vui lòng đăng nhập lại.');
@@ -209,7 +388,7 @@ const orderService = {
         }
       });
 
-      console.log('Raw API Response:', JSON.stringify(response.data, null, 2));
+      // console.log('Raw API Response:', JSON.stringify(response.data, null, 2));
 
       let ordersData = response.data;
       if (response.data && response.data.data) {
@@ -222,10 +401,10 @@ const orderService = {
       }
 
       const processedOrders = ordersData.map(order => {
-        console.log('Processing order:', JSON.stringify(order, null, 2));
-        console.log('Order has items field:', order.hasOwnProperty('items'));
+        // console.log('Processing order:', JSON.stringify(order, null, 2));
+        // console.log('Order has items field:', order.hasOwnProperty('items'));
         const items = order.items || [];
-        console.log('Order items:', JSON.stringify(items, null, 2));
+        // console.log('Order items:', JSON.stringify(items, null, 2));
 
         const shippingAddress = {
           name: order.recipient_name || 'Chưa cập nhật',
@@ -243,22 +422,32 @@ const orderService = {
           status: order.status,
           totalAmount: order.total_amount,
           paymentMethod: order.payment_method,
-          items: items.map(item => ({
-            id: item.order_item_id || item.id || item.product_id,
-            product_id: item.product_id,
-            product_name: `#${item.product_id}`,
-            product_image: '/images/placeholder.png',
-            quantity: item.quantity,
-            price: item.price,
-            total: item.price * item.quantity,
-            unit: ''
-          })),
+          items: items.map(item => {
+            const productInfo = item.product || {};
+            // Đảm bảo rằng images được truyền đúng cách
+            const images = Array.isArray(productInfo.images) ? productInfo.images : [];
+            
+            return {
+              id: item.order_item_id || item.id || item.product_id,
+              product_id: item.product_id,
+              product_name: productInfo.name || `#${item.product_id}`,
+              product: {
+                id: productInfo.id || item.product_id,
+                name: productInfo.name || `#${item.product_id}`,
+                images: images
+              },
+              quantity: item.quantity,
+              price: item.price,
+              total: item.price * item.quantity,
+              unit: productInfo.unit || ''
+            };
+          }),
           customer: order.customer || {},
           shippingAddress
         };
       });
 
-      console.log('Processed orders:', JSON.stringify(processedOrders, null, 2));
+      // console.log('Processed orders:', JSON.stringify(processedOrders, null, 2));
       return processedOrders;
     } catch (error) {
       console.error('Error in getUserOrders:', error);

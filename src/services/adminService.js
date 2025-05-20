@@ -48,10 +48,53 @@ const adminService = {
     try {
       const timestamp = bypassCache ? `&_t=${new Date().getTime()}` : '';
       const response = await api.get(`/api/admin/dashboard/revenue-overview?mode=${mode}${timestamp}`);
-      return response.data;
+      
+      // Kiểm tra và định dạng dữ liệu trả về
+      const responseData = response.data;
+      
+      // Đảm bảo dữ liệu có định dạng đúng
+      if (!responseData || !responseData.data || !Array.isArray(responseData.data)) {
+        console.warn('Định dạng dữ liệu doanh thu không đúng:', responseData);
+        return { data: [] };
+      }
+      
+      // Nếu không có dữ liệu, trả về mảng rỗng
+      if (responseData.data.length === 0) {
+        console.log('Không có dữ liệu doanh thu cho mode:', mode);
+        return { data: [] };
+      }
+      
+      // Xử lý và chuẩn hóa dữ liệu nếu cần
+      const formattedData = responseData.data.map(item => {
+        // Đảm bảo các trường cần thiết tồn tại
+        return {
+          period: item.period || item.label || '',
+          revenue: Number(item.revenue || item.value || 0),
+          orders_count: Number(item.orders_count || 0),
+          // Thêm các trường khác nếu cần
+        };
+      });
+      
+      // Sắp xếp dữ liệu theo thời gian nếu có trường period
+      const sortedData = formattedData.sort((a, b) => {
+        if (!a.period || !b.period) return 0;
+        
+        // Cách sắp xếp phụ thuộc vào định dạng period và mode
+        if (mode === 'yearly') {
+          return Number(a.period) - Number(b.period);
+        } else if (['monthly', 'daily'].includes(mode) && a.period.includes('-') && b.period.includes('-')) {
+          // Nếu period có định dạng là date string (YYYY-MM-DD hoặc YYYY-MM)
+          return new Date(a.period) - new Date(b.period);
+        }
+        
+        return 0; // Không sắp xếp nếu không xác định được định dạng
+      });
+      
+      return { data: sortedData };
     } catch (error) {
       console.error('Lỗi khi lấy tổng quan doanh thu:', error);
-      throw new Error('Không thể lấy tổng quan doanh thu');
+      // Trả về mảng rỗng thay vì ném lỗi để component có thể hiển thị trạng thái "không có dữ liệu"
+      return { data: [] };
     }
   },
 
@@ -73,7 +116,7 @@ const adminService = {
       return {
         stats,
         recentOrders: recentOrders.orders,
-        revenueOverview: revenueOverview.revenue_periods
+        revenueOverview: revenueOverview.data
       };
     } catch (error) {
       console.error('Lỗi khi lấy dữ liệu dashboard:', error);

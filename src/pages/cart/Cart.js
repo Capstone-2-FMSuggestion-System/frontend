@@ -1,12 +1,13 @@
-import React, { useContext } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useContext, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
-import { FaShoppingCart, FaArrowLeft } from 'react-icons/fa';
+import { FaShoppingCart, FaArrowLeft, FaExclamationTriangle } from 'react-icons/fa';
 import MainLayout from '../../layouts/MainLayout';
 import CartItem from '../../components/cart/CartItem/CartItem';
 import CartSummary from '../../components/cart/CartSummary/CartSummary';
 import Button from '../../components/common/Button/Button';
 import { CartContext } from '../../context/CartContext';
+import { toast } from 'react-hot-toast';
 
 const CartContainer = styled.div`
   max-width: 1200px;
@@ -87,8 +88,38 @@ const EmptyCart = styled.div`
   }
 `;
 
+const AlertMessage = styled.div`
+  display: flex;
+  align-items: flex-start;
+  background-color: #fff3cd;
+  color: #856404;
+  border-radius: 4px;
+  padding: 12px 15px;
+  margin-bottom: 20px;
+  
+  svg {
+    margin-right: 10px;
+    margin-top: 3px;
+    flex-shrink: 0;
+  }
+  
+  p {
+    margin: 0;
+  }
+`;
+
 const Cart = () => {
   const { cart, clearCart } = useContext(CartContext);
+  const location = useLocation();
+  
+  // Check if we have payment status information from redirect
+  useEffect(() => {
+    if (location.state?.paymentCancelled) {
+      toast.error(location.state.message || 'Bạn đã hủy thanh toán');
+    } else if (location.state?.paymentFailed) {
+      toast.error(location.state.message || 'Thanh toán không thành công');
+    }
+  }, [location.state]);
   
   const isCartEmpty = cart.items.length === 0;
   
@@ -103,6 +134,20 @@ const Cart = () => {
             <FaArrowLeft /> Tiếp tục mua sắm
           </ContinueShopping>
         </CartHeader>
+        
+        {location.state?.paymentCancelled && (
+          <AlertMessage>
+            <FaExclamationTriangle />
+            <p>{location.state.message || 'Bạn đã hủy thanh toán. Vui lòng thử lại hoặc chọn phương thức thanh toán khác.'}</p>
+          </AlertMessage>
+        )}
+        
+        {location.state?.paymentFailed && (
+          <AlertMessage>
+            <FaExclamationTriangle />
+            <p>{location.state.message || 'Thanh toán không thành công. Vui lòng thử lại sau.'}</p>
+          </AlertMessage>
+        )}
         
         <CartContent>
           <CartItems>

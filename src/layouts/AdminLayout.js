@@ -16,7 +16,7 @@ import { AuthContext } from '../context/AuthContext';
 
 const AdminContainer = styled.div`
   display: flex;
-  min-height: 200vh;
+  min-height: 100vh;
 `;
 
 const Sidebar = styled.aside`
@@ -99,8 +99,8 @@ const TopBar = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 15px 0;
-  margin-bottom: 20px;
+  padding: 0px 0; /* Giảm padding từ 15px 0 xuống 10px 0 */
+  margin-bottom: 10px; /* Giảm margin-bottom từ 20px xuống 15px */
   border-bottom: 1px solid #eee;
 `;
 

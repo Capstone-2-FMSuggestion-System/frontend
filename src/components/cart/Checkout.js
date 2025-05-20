@@ -1,6 +1,6 @@
 // src/pages/cart/Checkout.js
 import React, { useState, useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
@@ -149,6 +149,21 @@ const Checkout = () => {
   const { currentUser } = useContext(AuthContext);
   const { cart, clearCart } = useContext(CartContext);
   const navigate = useNavigate();
+  const location = useLocation();
+  const [orderSummary, setOrderSummary] = useState({
+    subtotal: cart.totalAmount,
+    discount: 0,
+    total: cart.totalAmount,
+    coupon_applied: false,
+    coupon_code: null
+  });
+  
+  useEffect(() => {
+    // Lấy orderSummary từ location state nếu có
+    if (location.state && location.state.orderSummary) {
+      setOrderSummary(location.state.orderSummary);
+    }
+  }, [location.state]);
   
   useEffect(() => {
     // Redirect to cart if cart is empty
@@ -202,45 +217,69 @@ const Checkout = () => {
   
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
+      const fullName = `${values.firstName} ${values.lastName}`.trim();
+      
       // Prepare order data
       const orderData = {
-        customer: {
-          firstName: values.firstName,
-          lastName: values.lastName,
-          email: values.email,
-          phone: values.phone
-        },
-        shippingAddress: {
-          address: values.address,
-          city: values.city,
-          zipCode: values.zipCode
-        },
-        orderItems: cart.items.map(item => ({
-          productId: item.id,
+        user_id: currentUser.user_id,
+        total_amount: orderSummary.total,
+        payment_method: values.paymentMethod,
+        recipient_name: fullName,
+        recipient_phone: values.phone,
+        shipping_address: values.address,
+        shipping_city: values.city,
+        shipping_province: '',
+        shipping_postal_code: values.zipCode,
+        items: cart.items.map(item => ({
+          product_id: item.product_id,
           quantity: item.quantity,
-          price: item.discountPrice || item.price
-        })),
-        paymentMethod: values.paymentMethod,
-        notes: values.notes,
-        subtotal: cart.totalAmount,
-        shipping: cart.totalAmount > 200000 ? 0 : 20000,
-        discount: 0,
-        total: cart.totalAmount + (cart.totalAmount > 200000 ? 0 : 20000)
+          price: item.price
+        }))
       };
       
-      // Create order
-      const order = await orderService.createOrder(orderData);
+      console.log('Order data being sent:', orderData);
+      console.log('Order summary with coupon:', orderSummary);
+      
+      // Gọi API tạo đơn hàng
+      let order;
+      
+      if (selectedPayment === 'payos') {
+        // Gọi API thanh toán qua PayOS
+        order = await orderService.createPayosOrder(orderData);
+      } else {
+        // Gọi API thanh toán COD
+        order = await orderService.createOrder(orderData);
+      }
+      
+      // Nếu đã áp dụng mã giảm giá, lưu vào đơn hàng
+      if (orderSummary.coupon_applied && orderSummary.coupon_code) {
+        try {
+          console.log(`Applying coupon ${orderSummary.coupon_code} to order ${order.order_id}`);
+          const couponResult = await orderService.applyCouponToOrder(order.order_id, orderSummary.coupon_code);
+          console.log('Coupon application result:', couponResult);
+        } catch (couponError) {
+          console.error('Error applying coupon to order:', couponError);
+        }
+      }
       
       // Clear cart
       clearCart();
       
-      // Redirect to success page
-      navigate('/payment-success', { state: { order } });
+      // Redirect to success page hoặc trang thanh toán
+      if (selectedPayment === 'payos' && order && order.payment_url) {
+        window.location.href = order.payment_url;
+      } else {
+        navigate('/payment-success', { state: { order } });
+      }
     } catch (error) {
-      console.error('Failed to create order:', error);
+      console.error('Failed to process order:', error);
     } finally {
       setSubmitting(false);
     }
+  };
+  
+  const handleCartSummaryUpdate = (updatedSummary) => {
+    setOrderSummary(updatedSummary);
   };
   
   return (
@@ -248,27 +287,37 @@ const Checkout = () => {
       <CheckoutContainer>
         <CheckoutTitle>Checkout</CheckoutTitle>
         
-        <Formik
-          initialValues={initialValues}
-          validationSchema={validationSchema}
-          onSubmit={handleSubmit}
-        >
-          {({ values, isSubmitting, setFieldValue }) => (
-            <Form>
-              <CheckoutContent>
-                <CheckoutForm>
-                  <SectionTitle>Shipping Information</SectionTitle>
+        <CheckoutContent>
+          <CheckoutForm>
+            <Formik
+              initialValues={initialValues}
+              validationSchema={validationSchema}
+              onSubmit={handleSubmit}
+            >
+              {({ values, errors, touched, handleChange, handleBlur, isSubmitting }) => (
+                <Form>
+                  <SectionTitle>Thông tin giao hàng</SectionTitle>
                   
                   <FormRow cols={2}>
                     <FormGroup>
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input type="text" id="firstName" name="firstName" />
+                      <Label htmlFor="firstName">Tên</Label>
+                      <Input
+                        type="text"
+                        id="firstName"
+                        name="firstName"
+                        placeholder="Nhập tên"
+                      />
                       <ErrorMessage name="firstName" component={ErrorText} />
                     </FormGroup>
                     
                     <FormGroup>
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input type="text" id="lastName" name="lastName" />
+                      <Label htmlFor="lastName">Họ</Label>
+                      <Input
+                        type="text"
+                        id="lastName"
+                        name="lastName"
+                        placeholder="Nhập họ"
+                      />
                       <ErrorMessage name="lastName" component={ErrorText} />
                     </FormGroup>
                   </FormRow>
@@ -276,147 +325,122 @@ const Checkout = () => {
                   <FormRow cols={2}>
                     <FormGroup>
                       <Label htmlFor="email">Email</Label>
-                      <Input type="email" id="email" name="email" />
+                      <Input
+                        type="email"
+                        id="email"
+                        name="email"
+                        placeholder="Nhập địa chỉ email"
+                      />
                       <ErrorMessage name="email" component={ErrorText} />
                     </FormGroup>
                     
                     <FormGroup>
-                      <Label htmlFor="phone">Phone</Label>
-                      <Input type="tel" id="phone" name="phone" />
+                      <Label htmlFor="phone">Số điện thoại</Label>
+                      <Input
+                        type="text"
+                        id="phone"
+                        name="phone"
+                        placeholder="Nhập số điện thoại"
+                      />
                       <ErrorMessage name="phone" component={ErrorText} />
                     </FormGroup>
                   </FormRow>
                   
                   <FormGroup>
-                    <Label htmlFor="address">Address</Label>
-                    <Input type="text" id="address" name="address" />
+                    <Label htmlFor="address">Địa chỉ</Label>
+                    <Input
+                      type="text"
+                      id="address"
+                      name="address"
+                      placeholder="Nhập địa chỉ"
+                    />
                     <ErrorMessage name="address" component={ErrorText} />
                   </FormGroup>
                   
                   <FormRow cols={2}>
                     <FormGroup>
-                      <Label htmlFor="city">City</Label>
-                      <Input type="text" id="city" name="city" />
+                      <Label htmlFor="city">Thành phố</Label>
+                      <Input
+                        type="text"
+                        id="city"
+                        name="city"
+                        placeholder="Nhập thành phố"
+                      />
                       <ErrorMessage name="city" component={ErrorText} />
                     </FormGroup>
                     
                     <FormGroup>
-                      <Label htmlFor="zipCode">ZIP Code</Label>
-                      <Input type="text" id="zipCode" name="zipCode" />
+                      <Label htmlFor="zipCode">Mã bưu điện</Label>
+                      <Input
+                        type="text"
+                        id="zipCode"
+                        name="zipCode"
+                        placeholder="Nhập mã bưu điện"
+                      />
                       <ErrorMessage name="zipCode" component={ErrorText} />
                     </FormGroup>
                   </FormRow>
                   
-                  <SectionTitle>Payment Method</SectionTitle>
-                  
                   <FormGroup>
-                    <RadioGroup>
-                      <RadioOption>
-                        <Field 
-                          type="radio" 
-                          name="paymentMethod" 
-                          value="cod" 
-                          checked={values.paymentMethod === 'cod'}
-                          onChange={() => {
-                            setFieldValue('paymentMethod', 'cod');
-                            setSelectedPayment('cod');
-                          }}
-                        />
-                        Cash on Delivery (COD)
-                      </RadioOption>
-                      
-                      <RadioOption>
-                        <Field 
-                          type="radio" 
-                          name="paymentMethod" 
-                          value="card"
-                          checked={values.paymentMethod === 'card'}
-                          onChange={() => {
-                            setFieldValue('paymentMethod', 'card');
-                            setSelectedPayment('card');
-                          }}
-                        />
-                        Credit/Debit Card
-                      </RadioOption>
-                      
-                      <RadioOption>
-                        <Field 
-                          type="radio" 
-                          name="paymentMethod" 
-                          value="bank"
-                          checked={values.paymentMethod === 'bank'}
-                          onChange={() => {
-                            setFieldValue('paymentMethod', 'bank');
-                            setSelectedPayment('bank');
-                          }}
-                        />
-                        Bank Transfer
-                      </RadioOption>
-                    </RadioGroup>
-                    
-                    <PaymentDetails visible={selectedPayment === 'card'}>
-                      <FormGroup>
-                        <Label htmlFor="cardNumber">Card Number</Label>
-                        <Input type="text" id="cardNumber" name="cardNumber" placeholder="XXXX XXXX XXXX XXXX" />
-                        <ErrorMessage name="cardNumber" component={ErrorText} />
-                      </FormGroup>
-                      
-                      <FormGroup>
-                        <Label htmlFor="cardName">Name on Card</Label>
-                        <Input type="text" id="cardName" name="cardName" />
-                        <ErrorMessage name="cardName" component={ErrorText} />
-                      </FormGroup>
-                      
-                      <FormRow cols={2}>
-                        <FormGroup>
-                          <Label htmlFor="cardExpiry">Expiry Date</Label>
-                          <Input type="text" id="cardExpiry" name="cardExpiry" placeholder="MM/YY" />
-                          <ErrorMessage name="cardExpiry" component={ErrorText} />
-                        </FormGroup>
-                        
-                        <FormGroup>
-                          <Label htmlFor="cardCvv">CVV</Label>
-                          <Input type="text" id="cardCvv" name="cardCvv" placeholder="123" />
-                          <ErrorMessage name="cardCvv" component={ErrorText} />
-                        </FormGroup>
-                      </FormRow>
-                    </PaymentDetails>
-                    
-                    <PaymentDetails visible={selectedPayment === 'bank'}>
-                      <p>Please transfer the amount to the following bank account:</p>
-                      <p><strong>Account Name:</strong> SM Food Store</p>
-                      <p><strong>Account Number:</strong> 9353538222</p>
-                      <p><strong>Bank:</strong> Vietcombank</p>
-                      <p>After making the payment, please send the transfer details to support@sm.com</p>
-                    </PaymentDetails>
-                  </FormGroup>
-                  
-                  <FormGroup>
-                    <Label htmlFor="notes">Order Notes (Optional)</Label>
-                    <TextArea 
-                      as="textarea" 
-                      id="notes" 
-                      name="notes" 
-                      placeholder="Special instructions for delivery"
+                    <Label htmlFor="notes">Ghi chú</Label>
+                    <TextArea
+                      as="textarea"
+                      id="notes"
+                      name="notes"
+                      placeholder="Ghi chú thêm về đơn hàng"
                     />
                   </FormGroup>
                   
-                  <OrderButton 
-                    type="submit" 
-                    variant="secondary" 
-                    size="large" 
-                    fullWidth 
+                  <SectionTitle>Phương thức thanh toán</SectionTitle>
+                  
+                  <RadioGroup>
+                    <RadioOption>
+                      <Field
+                        type="radio"
+                        id="cod"
+                        name="paymentMethod"
+                        value="COD"
+                        onChange={e => {
+                          handleChange(e);
+                          setSelectedPayment('cod');
+                        }}
+                        checked={selectedPayment === 'cod'}
+                      />
+                      Thanh toán khi nhận hàng (COD)
+                    </RadioOption>
+                    
+                    <RadioOption>
+                      <Field
+                        type="radio"
+                        id="payos"
+                        name="paymentMethod"
+                        value="payos"
+                        onChange={e => {
+                          handleChange(e);
+                          setSelectedPayment('payos');
+                        }}
+                        checked={selectedPayment === 'payos'}
+                      />
+                      Thanh toán trực tuyến (PayOS)
+                    </RadioOption>
+                  </RadioGroup>
+                  
+                  <OrderButton
+                    primary
+                    type="submit"
                     disabled={isSubmitting}
                   >
-                    Place Order
+                    {isSubmitting ? 'Đang xử lý...' : 'Đặt hàng'}
                   </OrderButton>
-                </CheckoutForm>
-                
-                <CartSummary />
-              </CheckoutContent>
-            </Form>
-          )}
-        </Formik>
+                </Form>
+              )}
+            </Formik>
+          </CheckoutForm>
+          
+          <div>
+            <CartSummary onCheckout={handleCartSummaryUpdate} />
+          </div>
+        </CheckoutContent>
       </CheckoutContainer>
     </MainLayout>
   );

@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { FaTachometerAlt, FaUsers, FaShoppingBag, FaMoneyBillWave, FaChartLine, FaSyncAlt } from 'react-icons/fa';
 import AdminLayout from '../../layouts/AdminLayout';
 import adminService from '../../services/adminService';
 import RevenueChart from '../../components/admin/RevenueChart';
+import RevenueSummary from '../../components/admin/RevenueSummary';
+import { normalizeRevenueData } from '../../utils/revenueAnalytics';
 import { toast } from 'react-toastify';
 
 const DashboardContainer = styled.div`
@@ -110,6 +112,10 @@ const ChartCard = styled.div`
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   padding: 20px;
+  max-height: 600px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 `;
 
 const ChartHeader = styled.div`
@@ -158,18 +164,27 @@ const LoadingIndicator = styled.div`
   color: #666;
 `;
 
+const TableContainer = styled.div`
+  overflow-y: auto;
+  max-height: 450px;
+`;
+
 const RecentOrdersTable = styled.table`
   width: 100%;
   border-collapse: collapse;
   
   th, td {
-    padding: 12px 15px;
+    padding: 8px 12px;
     text-align: left;
     border-bottom: 1px solid #eee;
   }
   
   th {
     font-weight: 600;
+    position: sticky;
+    top: 0;
+    background-color: white;
+    z-index: 1;
   }
   
   tr:last-child td {
@@ -193,6 +208,17 @@ const RecentOrdersTable = styled.table`
   }
 `;
 
+const ChartContent = styled.div`
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+`;
+
+const RevenueSummaryContainer = styled.div`
+  margin-bottom: 10px;
+`;
+
 const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -205,35 +231,56 @@ const Dashboard = () => {
     recentOrders: [],
     revenueData: []
   });
+  const [loadError, setLoadError] = useState(null);
+  const [normalizedRevenueData, setNormalizedRevenueData] = useState([]);
 
   // Extract fetchDashboardData to a separate function so we can reuse it
-  const fetchDashboardData = async (forceRefresh = false) => {
+  const fetchDashboardData = useCallback(async (forceRefresh = false) => {
     setIsLoading(true);
+    setLoadError(null);
+    
     try {
-      const stats = await adminService.getDashboardStats(forceRefresh);
-      const recentOrdersResponse = await adminService.getRecentOrders(5, forceRefresh);
-      const revenueResponse = await adminService.getRevenueOverview(timeRange, forceRefresh);
+      // Lấy đồng thời tất cả dữ liệu cần thiết cho dashboard
+      const [stats, recentOrdersResponse, revenueResponse] = await Promise.all([
+        adminService.getDashboardStats(forceRefresh),
+        adminService.getRecentOrders(5, forceRefresh),
+        adminService.getRevenueOverview(timeRange, forceRefresh)
+      ]);
 
-      setDashboardData({
+      // Kiểm tra và đảm bảo dữ liệu nhận được có định dạng đúng
+      const validatedData = {
         totalOrders: stats?.total_orders ?? 0,
         totalRevenue: stats?.total_revenue ?? 0,
         totalCustomers: stats?.total_users ?? 0,
         totalProducts: stats?.total_products ?? 0,
-        recentOrders: recentOrdersResponse?.orders ?? [],
-        revenueData: revenueResponse?.data ?? []
-      });
+        recentOrders: Array.isArray(recentOrdersResponse?.orders) ? recentOrdersResponse.orders : [],
+        revenueData: Array.isArray(revenueResponse?.data) ? revenueResponse.data : []
+      };
+
+      setDashboardData(validatedData);
+      
+      // Chuẩn hóa dữ liệu doanh thu để sử dụng trong các phân tích
+      const normalized = normalizeRevenueData(validatedData.revenueData, timeRange);
+      setNormalizedRevenueData(normalized);
+      
+      // Kiểm tra nếu không có dữ liệu doanh thu
+      if (!validatedData.revenueData || validatedData.revenueData.length === 0) {
+        console.warn('Không có dữ liệu doanh thu cho khoảng thời gian:', timeRange);
+      }
+      
       return true;
     } catch (error) {
       console.error('Lỗi khi lấy dữ liệu dashboard:', error);
+      setLoadError(error.message || 'Không thể tải dữ liệu dashboard');
       return false;
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [timeRange]);
 
   useEffect(() => {
     fetchDashboardData();
-  }, [timeRange]);
+  }, [fetchDashboardData, timeRange]);
 
   const handleRefreshData = async () => {
     if (isRefreshing) return; // Prevent multiple refreshes at once
@@ -268,7 +315,9 @@ const Dashboard = () => {
   };
 
   const handleTimeRangeChange = (range) => {
+    if (range === timeRange) return; // Không làm gì nếu chọn cùng một khoảng thời gian
     setTimeRange(range);
+    // fetchDashboardData sẽ được gọi tự động qua useEffect khi timeRange thay đổi
   };
 
   return (
@@ -287,6 +336,24 @@ const Dashboard = () => {
 
       {isLoading && !isRefreshing ? (
         <LoadingIndicator>Đang tải dữ liệu dashboard...</LoadingIndicator>
+      ) : loadError ? (
+        <div style={{ color: '#f44336', padding: '20px', textAlign: 'center' }}>
+          <p>Không thể tải dữ liệu: {loadError}</p>
+          <button 
+            onClick={handleRefreshData}
+            style={{ 
+              padding: '8px 16px', 
+              background: '#4CAF50', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '4px',
+              marginTop: '10px',
+              cursor: 'pointer'
+            }}
+          >
+            Thử lại
+          </button>
+        </div>
       ) : (
         <>
           <StatsGrid>
@@ -362,52 +429,64 @@ const Dashboard = () => {
                   </TimeRangeButton>
                 </TimeRangeSelector>
               </ChartHeader>
-              <RevenueChart
-                revenueData={Array.isArray(dashboardData.revenueData) ? dashboardData.revenueData : []}
-                timeRange={timeRange}
-                loading={isLoading}
-              />
+              
+              <ChartContent>
+                <RevenueSummaryContainer>
+                  <RevenueSummary 
+                    revenueData={normalizedRevenueData}
+                    timeRange={timeRange}
+                  />
+                </RevenueSummaryContainer>
+                
+                <RevenueChart
+                  revenueData={dashboardData.revenueData}
+                  timeRange={timeRange}
+                  loading={isLoading}
+                />
+              </ChartContent>
             </ChartCard>
 
             <ChartCard>
               <ChartHeader>
                 <h2>Đơn hàng gần đây</h2>
               </ChartHeader>
-              <RecentOrdersTable>
-                <thead>
-                  <tr>
-                    <th>Mã đơn</th>
-                    <th>Ngày</th>
-                    <th>Khách hàng</th>
-                    <th>Số tiền</th>
-                    <th>Trạng thái</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dashboardData.recentOrders.length > 0 ? (
-                    dashboardData.recentOrders.map(order => (
-                      <tr key={order.order_id}>
-                        <td>#{order.order_id}</td>
-                        <td>{new Date(order.created_at).toLocaleDateString('vi-VN')}</td>
-                        <td>{order.receiver_name || order.user_name || 'Khách hàng'}</td>
-                        <td>{formatCurrency(order.total_amount)}</td>
-                        <td className={`status-${order.status.toLowerCase()}`}>
-                          {order.status.toUpperCase() === 'PENDING' && 'Chờ xử lý'}
-                          {order.status.toUpperCase() === 'PROCESSING' && 'Đang xử lý'}
-                          {order.status.toUpperCase() === 'COMPLETED' && 'Hoàn thành'}
-                          {order.status.toUpperCase() === 'CANCELLED' && 'Đã hủy'}
-                          {order.status.toUpperCase() === 'DELIVERED' && 'Đã giao hàng'}
-                          {!['PENDING', 'PROCESSING', 'COMPLETED', 'CANCELLED', 'DELIVERED'].includes(order.status.toUpperCase()) && order.status}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
+              <TableContainer>
+                <RecentOrdersTable>
+                  <thead>
                     <tr>
-                      <td colSpan="5" style={{ textAlign: 'center' }}>Không có đơn hàng nào</td>
+                      <th>Mã đơn</th>
+                      <th>Ngày</th>
+                      <th>Khách hàng</th>
+                      <th>Số tiền</th>
+                      <th>Trạng thái</th>
                     </tr>
-                  )}
-                </tbody>
-              </RecentOrdersTable>
+                  </thead>
+                  <tbody>
+                    {dashboardData.recentOrders && dashboardData.recentOrders.length > 0 ? (
+                      dashboardData.recentOrders.map(order => (
+                        <tr key={order.order_id}>
+                          <td>#{order.order_id}</td>
+                          <td>{new Date(order.created_at).toLocaleDateString('vi-VN')}</td>
+                          <td>{order.receiver_name || order.user_name || 'Khách hàng'}</td>
+                          <td>{formatCurrency(order.total_amount)}</td>
+                          <td className={`status-${order.status.toLowerCase()}`}>
+                            {order.status.toUpperCase() === 'PENDING' && 'Chờ xử lý'}
+                            {order.status.toUpperCase() === 'PROCESSING' && 'Đang xử lý'}
+                            {order.status.toUpperCase() === 'COMPLETED' && 'Hoàn thành'}
+                            {order.status.toUpperCase() === 'CANCELLED' && 'Đã hủy'}
+                            {order.status.toUpperCase() === 'DELIVERED' && 'Đã giao hàng'}
+                            {!['PENDING', 'PROCESSING', 'COMPLETED', 'CANCELLED', 'DELIVERED'].includes(order.status.toUpperCase()) && order.status}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="5" style={{ textAlign: 'center' }}>Không có đơn hàng nào</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </RecentOrdersTable>
+              </TableContainer>
             </ChartCard>
           </ChartContainer>
         </>

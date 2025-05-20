@@ -13,10 +13,10 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        console.log('Initializing authentication state...');
+        // console.log('Initializing authentication state...');
         // Sử dụng tokenUtils.getTokens() để lấy token từ cookie
         const { accessToken, tokenExpiry } = authService.tokenUtils.getTokens();
-        console.log('Token found in cookies:', !!accessToken);
+        // console.log('Token found in cookies:', !!accessToken);
 
         if (accessToken) {
           // Kiểm tra token có hợp lệ không
@@ -47,7 +47,7 @@ export const AuthProvider = ({ children }) => {
           const user = await authService.getCurrentUser();
           if (user) {
             setCurrentUser(user);
-            console.log('Restored user session:', user);
+            // console.log('Restored user session:', user);
 
             // Tải giỏ hàng của người dùng từ server
             try {
@@ -81,7 +81,7 @@ export const AuthProvider = ({ children }) => {
             }
           }
         } else {
-          console.log('No token found, user is not authenticated');
+          // console.log('No token found, user is not authenticated');
         }
       } catch (error) {
         console.error('Auth initialization error:', error);

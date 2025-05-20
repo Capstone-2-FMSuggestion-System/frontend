@@ -225,15 +225,53 @@ const OrderItem = ({ order, onTrackOrder, onDownloadInvoice, onCancelOrder }) =>
     }
   };
 
-  console.log('OrderItem received order:', order);
-  console.log('Order items data:', order.items);
-  console.log('Order items type:', typeof order.items);
-  console.log('Order items length:', order.items?.length);
-  console.log('Order items structure:', {
-    isArray: Array.isArray(order.items),
-    hasItems: !!order.items,
-    itemsKeys: order.items ? Object.keys(order.items) : null
-  });
+  // Hàm lấy URL ảnh chính của sản phẩm
+  const getProductPrimaryImage = (item) => {
+    // Kiểm tra cấu trúc dữ liệu
+    // console.log('Item được kiểm tra:', item);
+    
+    // Trường hợp 1: item.product.images tồn tại
+    if (item.product?.images && Array.isArray(item.product.images) && item.product.images.length > 0) {
+      // Tìm ảnh có is_primary = true (hoặc các giá trị tương đương)
+      const primaryImage = item.product.images.find(img => {
+        // Kiểm tra các kiểu dữ liệu khác nhau của is_primary
+        if (img.is_primary === true) return true;
+        if (img.is_primary === 'true') return true;
+        if (img.is_primary === 1) return true;
+        if (img.is_primary === '1') return true;
+        
+        return false;
+      });
+      
+      if (primaryImage && primaryImage.image_url) {
+        // console.log('Tìm thấy ảnh chính:', primaryImage.image_url);
+        return primaryImage.image_url;
+      }
+      
+      // Nếu không tìm thấy, dùng ảnh đầu tiên
+      console.log('Không tìm thấy ảnh chính, dùng ảnh đầu tiên:', item.product.images[0].image_url);
+      return item.product.images[0].image_url;
+    }
+    
+    // Trường hợp 2: item.image_url
+    if (item.image_url) {
+      console.log('Dùng item.image_url:', item.image_url);
+      return item.image_url;
+    }
+    
+    // Trường hợp 3: item.product_image
+    if (item.product_image) {
+      console.log('Dùng item.product_image:', item.product_image);
+      return item.product_image;
+    }
+    
+    // Trường hợp cuối: Placeholder
+    console.log('Không tìm thấy hình ảnh, dùng placeholder');
+    return '/images/placeholder.png';
+  };
+
+  // console.log('OrderItem received order:', order);
+  // console.log('Order items data:', order.items);
 
   const orderItems = Array.isArray(order.items) ? order.items : [];
 
@@ -297,7 +335,7 @@ const OrderItem = ({ order, onTrackOrder, onDownloadInvoice, onCancelOrder }) =>
                   <ProductCell>
                     <ProductInfo>
                       <ProductImage
-                        src={item.product?.images?.[0]?.image_url || item.product_image || '/images/placeholder.png'}
+                        src={getProductPrimaryImage(item)}
                         alt={item.product?.name || item.product_name || `#${item.product_id}`}
                         onError={(e) => {
                           e.target.onerror = null;

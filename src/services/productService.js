@@ -60,7 +60,7 @@ const productService = {
 
       const response = await api.get(`/api/e-commerce/categories/${categoryId}/products`, { params: apiParams });
 
-      console.log('Raw API Response:', response.data);
+      // console.log('Raw API Response:', response.data);
 
       // Kiểm tra cấu trúc dữ liệu sản phẩm
       if (response.data.products && response.data.products.length > 0) {
@@ -216,7 +216,7 @@ const productService = {
         ? `${API_URL}/api/e-commerce/categories/${categoryId}/subcategories`
         : `${API_URL}/api/e-commerce/categories`;
 
-      console.log('Fetching subcategories from endpoint:', endpoint);
+      // console.log('Fetching subcategories from endpoint:', endpoint);
 
       const response = await axios.get(endpoint);
       return response.data;
@@ -541,7 +541,7 @@ export const getSubcategories = async (categoryId) => {
       ? `${API_URL}/api/e-commerce/categories/${categoryId}/subcategories`
       : `${API_URL}/api/e-commerce/categories`;
 
-    console.log('Fetching subcategories from endpoint:', endpoint);
+    // console.log('Fetching subcategories from endpoint:', endpoint);
 
     const response = await axios.get(endpoint);
     return response.data;

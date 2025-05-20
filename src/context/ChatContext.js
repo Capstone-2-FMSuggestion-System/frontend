@@ -42,7 +42,7 @@ export const ChatProvider = ({ children }) => {
     } else {
       // Chỉ tạo phiên chat mới khi KHÔNG có conversation_id trong localStorage
       // VÀ là lần đầu tiên mở ứng dụng (không phải refresh)
-      console.log('Không tìm thấy conversation_id trong localStorage, cần tạo mới trong lần mở chat đầu tiên');
+      // console.log('Không tìm thấy conversation_id trong localStorage, cần tạo mới trong lần mở chat đầu tiên');
       // QUAN TRỌNG: KHÔNG tạo conversation mới ở đây, chỉ tạo khi người dùng mở chat
       // createNewChatSession(true); - LOẠI BỎ DÒNG NÀY
     }

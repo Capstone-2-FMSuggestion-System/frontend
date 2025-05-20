@@ -36,7 +36,10 @@ const payosService = {
                 shipping_city: orderData.shipping_city,
                 shipping_province: orderData.shipping_province,
                 shipping_postal_code: orderData.shipping_postal_code,
-                notes: orderData.notes || ''
+                notes: orderData.notes || '',
+                discount_amount: orderData.discount_amount || 0,
+                coupon_code: orderData.coupon_code || null,
+                subtotal: orderData.subtotal || orderData.total_amount
             };
 
             // Add authorization header
@@ -84,7 +87,25 @@ const payosService = {
     checkStatus: async (orderCode) => {
         try {
             console.log('Checking PayOS status for order:', orderCode);
-            const response = await axios.get(`${API_URL}/api/payments/payos/status/${orderCode}`);
+            
+            // Lấy token xác thực để gọi API
+            const token = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('accessToken='))
+                ?.split('=')[1];
+
+            if (!token) {
+                throw new Error('Không tìm thấy token xác thực. Vui lòng đăng nhập lại.');
+            }
+            
+            // Gọi API với token xác thực để lấy đầy đủ thông tin đơn hàng
+            const response = await axios.get(`${API_URL}/api/payments/payos/status/${orderCode}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
             console.log('PayOS status response:', response.data);
             return response.data;
         } catch (error) {

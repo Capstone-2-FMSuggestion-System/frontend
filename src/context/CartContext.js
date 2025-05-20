@@ -4,37 +4,20 @@ import { useToast } from './ToastContext';
 import { AuthContext } from './AuthContext';
 import authService from '../services/authService';
 import userService from '../services/userService';
+import orderService from '../services/orderService';
 
 export const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState(() => {
-    // Initialize cart from localStorage if available
-    const savedCart = localStorage.getItem('cart');
-    if (savedCart) {
-      try {
-        const parsedCart = JSON.parse(savedCart);
-        // Validate cart structure
-        if (parsedCart && Array.isArray(parsedCart.items)) {
-          // Calculate total amount
-          parsedCart.totalAmount = parsedCart.items.reduce((total, item) => {
-            return total + ((item.price || 0) * (item.quantity || 0));
-          }, 0);
-          return parsedCart;
-        }
-      } catch (error) {
-        console.error('Error parsing cart from localStorage:', error);
-      }
-    }
-    // Return default empty cart if no valid cart in localStorage
-    return {
+    const storedCart = localStorage.getItem('cart');
+    return storedCart ? JSON.parse(storedCart) : {
       items: [],
       totalAmount: 0,
-      shippingFee: 0,
-      tax: 0,
+      totalItems: 0,
       discount: 0,
-      notes: '',
-      savedForLater: []
+      couponCode: null,
+      discountedTotal: 0
     };
   });
 
@@ -70,11 +53,10 @@ export const CartProvider = ({ children }) => {
       const emptyCart = {
         items: [],
         totalAmount: 0,
-        shippingFee: 0,
-        tax: 0,
+        totalItems: 0,
         discount: 0,
-        notes: '',
-        savedForLater: []
+        couponCode: null,
+        discountedTotal: 0
       };
       setCart(emptyCart);
       localStorage.setItem('cart', JSON.stringify(emptyCart));
@@ -87,7 +69,7 @@ export const CartProvider = ({ children }) => {
       if (currentUser) {
         try {
           const serverCartItems = await userService.getCart();
-          console.log('Server cart:', serverCartItems);
+          // console.log('Server cart:', serverCartItems);
 
           if (serverCartItems && serverCartItems.length > 0) {
             // Format server cart items
@@ -148,7 +130,7 @@ export const CartProvider = ({ children }) => {
       const itemsToSync = cart.items.filter(item => !item.cart_item_id);
 
       if (itemsToSync.length === 0) {
-        console.log('No items to sync');
+        // console.log('No items to sync');
         setIsSyncing(false);
         return;
       }
@@ -217,7 +199,9 @@ export const CartProvider = ({ children }) => {
   // Add function to calculate total amount
   const calculateTotalAmount = (items) => {
     return items.reduce((total, item) => {
-      return total + (item.price * item.quantity);
+      const price = Number(item.price) || 0;
+      const quantity = Number(item.quantity) || 0;
+      return total + (price * quantity);
     }, 0);
   };
 
@@ -534,11 +518,10 @@ export const CartProvider = ({ children }) => {
         const formattedCart = {
           items: updatedCart.items || [],
           totalAmount: updatedCart.totalAmount || 0,
-          shippingFee: 0,
-          tax: 0,
+          totalItems: updatedCart.totalItems || 0,
           discount: 0,
-          notes: '',
-          savedForLater: cart.savedForLater || []
+          couponCode: null,
+          discountedTotal: updatedCart.discountedTotal || 0
         };
 
         setCart(formattedCart);
@@ -549,11 +532,10 @@ export const CartProvider = ({ children }) => {
         const emptyCart = {
           items: [],
           totalAmount: 0,
-          shippingFee: 0,
-          tax: 0,
+          totalItems: 0,
           discount: 0,
-          notes: '',
-          savedForLater: cart.savedForLater || []
+          couponCode: null,
+          discountedTotal: 0
         };
         setCart(emptyCart);
         localStorage.setItem('cart', JSON.stringify(emptyCart));
@@ -691,6 +673,57 @@ export const CartProvider = ({ children }) => {
     return cart.items.reduce((total, item) => total + item.quantity, 0);
   };
 
+  const calculateTotals = (items) => {
+    const totalAmount = items.reduce((total, item) => {
+      const itemPrice = Number(item.price) || 0;
+      const quantity = Number(item.quantity) || 0;
+      return total + (itemPrice * quantity);
+    }, 0);
+
+    const totalItems = items.reduce((total, item) => {
+      return total + (Number(item.quantity) || 0);
+    }, 0);
+
+    return { totalAmount, totalItems };
+  };
+  
+  // Cập nhật thông tin giảm giá trong giỏ hàng
+  const updateCartDiscountInfo = (discount, couponCode) => {
+    // Đảm bảo chuyển đổi thành số và làm tròn 2 chữ số thập phân
+    const discountNumber = Number(parseFloat(discount).toFixed(2)) || 0;
+    const totalAmount = Number(parseFloat(cart.totalAmount).toFixed(2)) || 0;
+    
+    // Đảm bảo discountedTotal không âm
+    const discountedTotal = Math.max(0, totalAmount - discountNumber);
+    
+    console.log('Cập nhật thông tin giảm giá:', {
+      original: {
+        discount,
+        couponCode
+      },
+      calculated: {
+        discountNumber,
+        totalAmount,
+        discountedTotal
+      }
+    });
+    
+    const updatedCart = {
+      ...cart,
+      discount: discountNumber,
+      couponCode,
+      discountedTotal
+    };
+    
+    // Lưu vào state 
+    setCart(updatedCart);
+    
+    // Lưu vào localStorage
+    localStorage.setItem('cart', JSON.stringify(updatedCart));
+    
+    return { discountNumber, discountedTotal };
+  };
+
   const value = {
     cart,
     addToCart,
@@ -707,7 +740,8 @@ export const CartProvider = ({ children }) => {
     updateDiscount,
     getFinalTotal,
     isSyncing,
-    syncError
+    syncError,
+    updateCartDiscountInfo
   };
 
   return (

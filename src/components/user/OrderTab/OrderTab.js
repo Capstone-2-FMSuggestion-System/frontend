@@ -109,18 +109,18 @@ const OrderTab = () => {
         setLoading(true);
         // Bước 1: Lấy danh sách đơn hàng
         const response = await orderService.getUserOrders();
-        console.log('Fetched orders from API:', response);
+        // console.log('Fetched orders from API:', response);
 
         if (Array.isArray(response) && response.length > 0) {
           // Bước 2: Lấy chi tiết từng đơn hàng
           try {
-            console.log('Fetching order details for each order...');
+            // console.log('Fetching order details for each order...');
             const ordersWithDetails = await Promise.all(
               response.map(async (order) => {
                 try {
                   // Gọi API để lấy chi tiết đơn hàng
                   const orderDetail = await orderService.getOrderById(order.orderId);
-                  console.log(`Chi tiết đơn hàng ${order.orderId}:`, orderDetail);
+                  // console.log(`Chi tiết đơn hàng ${order.orderId}:`, orderDetail);
 
                   // Cập nhật lại thông tin items từ chi tiết đơn hàng
                   if (orderDetail && orderDetail.items && orderDetail.items.length > 0) {
@@ -136,7 +136,7 @@ const OrderTab = () => {
                 }
               })
             );
-            console.log('Orders with details:', ordersWithDetails);
+            // console.log('Orders with details:', ordersWithDetails);
             setOrders(ordersWithDetails);
           } catch (error) {
             console.error('Error fetching order details:', error);

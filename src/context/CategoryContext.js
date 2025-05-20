@@ -51,7 +51,7 @@ export const CategoryProvider = ({ children }) => {
             }
           }
           setSubcategoriesMap(newMap);
-          console.log('CategoryContext: subcategoriesMap updated', newMap);
+          // console.log('CategoryContext: subcategoriesMap updated', newMap);
         }
       } catch (error) {
         console.error('Error loading subcategories:', error);
@@ -196,11 +196,11 @@ export const CategoryProvider = ({ children }) => {
 
   // Debug để theo dõi thay đổi trong context
   useEffect(() => {
-    console.log('CategoryContext: subcategoriesMap updated', subcategoriesMap);
+    // console.log('CategoryContext: subcategoriesMap updated', subcategoriesMap);
   }, [subcategoriesMap]);
 
   useEffect(() => {
-    console.log('CategoryContext: selectedSubcategoryMap updated', selectedSubcategoryMap);
+    // console.log('CategoryContext: selectedSubcategoryMap updated', selectedSubcategoryMap);
   }, [selectedSubcategoryMap]);
 
   // Giá trị cung cấp qua context
