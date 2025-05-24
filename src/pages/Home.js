@@ -20,7 +20,7 @@ const HeroSection = styled.section`
   height: 60vh;
   min-height: 400px;
   background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)),
-    url("/assets/hero-bg.jpg");
+    url("https://img1.kienthucvui.vn/uploads/2019/10/30/hinh-anh-rau-cu-qua-dep_112153407.jpg");
   background-size: cover;
   background-position: center;
   display: flex;
@@ -310,7 +310,7 @@ const Home = () => {
   }, []);
 
   const handleCategoryClick = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
