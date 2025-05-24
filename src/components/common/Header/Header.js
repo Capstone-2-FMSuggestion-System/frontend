@@ -1,12 +1,12 @@
 // src/components/common/Header/Header.js
-import React, { useState, useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import styled from 'styled-components';
-import { FaShoppingCart, FaSearch, FaUser, FaPhoneAlt } from 'react-icons/fa';
-import { CartContext } from '../../../context/CartContext';
-import { AuthContext } from '../../../context/AuthContext';
-import UserDropdown from '../UserDropdown/UserDropdown';
-import logo from '../../../assets/images/logo.png';
+import React, { useState, useContext } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import styled from "styled-components";
+import { FaShoppingCart, FaSearch, FaUser, FaPhoneAlt } from "react-icons/fa";
+import { CartContext } from "../../../context/CartContext";
+import { AuthContext } from "../../../context/AuthContext";
+import UserDropdown from "../UserDropdown/UserDropdown";
+import logo from "../../../assets/images/logo.png";
 
 const HeaderContainer = styled.header`
   background-color: #fff;
@@ -33,7 +33,7 @@ const TopBar = styled.div`
 const Logo = styled.div`
   flex: 0 0 auto;
   margin-right: 15px;
-  
+
   img {
     height: 45px;
   }
@@ -54,15 +54,15 @@ const SearchInput = styled.input`
   border-radius: 4px 0 0 4px;
   outline: none;
   font-size: 14px;
-  
+
   &:focus {
-    border-color: #4CAF50;
+    border-color: #4caf50;
   }
 `;
 
 const SearchButton = styled.button`
-  background: #4CAF50;
-  border: 1px solid #4CAF50;
+  background: #4caf50;
+  border: 1px solid #4caf50;
   border-left: none;
   padding: 0 20px;
   border-radius: 0 4px 4px 0;
@@ -71,11 +71,11 @@ const SearchButton = styled.button`
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
-  
+
   &:hover {
-    background: #388E3C;
+    background: #388e3c;
   }
-  
+
   svg {
     font-size: 18px;
     color: white;
@@ -90,10 +90,10 @@ const ContactInfo = styled.div`
   font-size: 0.9rem;
   color: #666;
   white-space: nowrap;
-  
+
   svg {
     margin-right: 8px;
-    color: #4CAF50;
+    color: #4caf50;
     font-size: 16px;
   }
 `;
@@ -116,11 +116,11 @@ const ActionButton = styled(Link)`
   font-size: 0.9rem;
   transition: color 0.2s ease;
   white-space: nowrap;
-  
+
   &:hover {
-    color: #4CAF50;
+    color: #4caf50;
   }
-  
+
   svg {
     margin-right: 8px;
     font-size: 18px;
@@ -128,7 +128,7 @@ const ActionButton = styled(Link)`
 `;
 
 const CartBadge = styled.span`
-  background-color: #4CAF50;
+  background-color: #4caf50;
   color: white;
   border-radius: 50%;
   min-width: 20px;
@@ -162,30 +162,32 @@ const NavLink = styled(Link)`
   position: relative;
   text-align: center;
   font-size: 15px;
-  
-  &:hover, &.active {
-    color: #4CAF50;
+
+  &:hover,
+  &.active {
+    color: #4caf50;
   }
-  
+
   &:after {
-    content: '';
+    content: "";
     position: absolute;
     bottom: 0;
     left: 50%;
     transform: translateX(-50%);
     width: 0;
     height: 2px;
-    background-color: #4CAF50;
+    background-color: #4caf50;
     transition: width 0.3s ease;
   }
-  
-  &:hover:after, &.active:after {
+
+  &:hover:after,
+  &.active:after {
     width: 70%;
   }
 `;
 
 const Header = () => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const { cart } = useContext(CartContext);
   const { currentUser, isAuthenticated } = useContext(AuthContext);
@@ -218,7 +220,7 @@ const Header = () => {
         </SearchContainer>
         <ContactInfo>
           <FaPhoneAlt />
-          <span>(+91) 111-111-1111</span>
+          <span>(+84) 032-933-0318</span>
         </ContactInfo>
         <ActionItems>
           {isAuthenticated ? (
@@ -232,7 +234,9 @@ const Header = () => {
           <ActionButton to="/cart">
             <FaShoppingCart />
             Giỏ hàng
-            {cart.items.length > 0 && <CartBadge>{cart.items.length}</CartBadge>}
+            {cart.items.length > 0 && (
+              <CartBadge>{cart.items.length}</CartBadge>
+            )}
           </ActionButton>
         </ActionItems>
       </TopBar>
