@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import styled from 'styled-components';
-import { FaShoppingBag, FaEye, FaSearch } from 'react-icons/fa';
-import MainLayout from '../../layouts/MainLayout';
-import Button from '../../components/common/Button/Button';
-import orderService from '../../services/orderService';
-import { toast } from 'react-hot-toast';
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import styled from "styled-components";
+import { FaShoppingBag, FaEye, FaSearch } from "react-icons/fa";
+import MainLayout from "../../layouts/MainLayout";
+import Button from "../../components/common/Button/Button";
+import orderService from "../../services/orderService";
+import { toast } from "react-hot-toast";
 
 const Container = styled.div`
   max-width: 1200px;
@@ -54,32 +54,32 @@ const OrderStatus = styled.div`
   border-radius: 4px;
   font-size: 14px;
   font-weight: 500;
-  background-color: ${props => {
+  background-color: ${(props) => {
     switch (props.status) {
-      case 'pending':
-        return '#fff3cd';
-      case 'processing':
-        return '#cce5ff';
-      case 'completed':
-        return '#d4edda';
-      case 'cancelled':
-        return '#f8d7da';
+      case "pending":
+        return "#fff3cd";
+      case "processing":
+        return "#cce5ff";
+      case "completed":
+        return "#d4edda";
+      case "cancelled":
+        return "#f8d7da";
       default:
-        return '#e2e3e5';
+        return "#e2e3e5";
     }
   }};
-  color: ${props => {
+  color: ${(props) => {
     switch (props.status) {
-      case 'pending':
-        return '#856404';
-      case 'processing':
-        return '#004085';
-      case 'completed':
-        return '#155724';
-      case 'cancelled':
-        return '#721c24';
+      case "pending":
+        return "#856404";
+      case "processing":
+        return "#004085";
+      case "completed":
+        return "#155724";
+      case "cancelled":
+        return "#721c24";
       default:
-        return '#383d41';
+        return "#383d41";
     }
   }};
 `;
@@ -135,7 +135,7 @@ const SearchInput = styled.input`
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 14px;
-  
+
   &:focus {
     outline: none;
     border-color: #007bff;
@@ -154,7 +154,7 @@ const StatusFilter = styled.select`
   border-radius: 4px;
   font-size: 14px;
   background-color: white;
-  
+
   &:focus {
     outline: none;
     border-color: #007bff;
@@ -165,62 +165,67 @@ const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const formatDate = (dateString) => {
     try {
-      if (!dateString) return 'N/A';
+      if (!dateString) return "N/A";
       const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'N/A';
-      return date.toLocaleDateString('vi-VN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
+      if (isNaN(date.getTime())) return "N/A";
+      return date.toLocaleDateString("vi-VN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
       });
     } catch (error) {
-      console.error('Error formatting date:', error);
-      return 'N/A';
+      console.error("Error formatting date:", error);
+      return "N/A";
     }
   };
 
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      console.log('Starting to fetch orders...');
+      console.log("Starting to fetch orders...");
 
       const response = await orderService.getUserOrders();
-      console.log('API Response:', response);
+      console.log("API Response:", response);
 
       if (response && Array.isArray(response)) {
-        const processedOrders = response.map(order => {
+        const processedOrders = response.map((order) => {
           // console.log('Processing order:', order);
           return {
             order_id: order.order_id || order.id,
             created_at: order.created_at || order.createdAt,
             status: order.status,
             total_amount: order.total_amount || order.totalAmount || 0,
-            payment_method: order.payment_method || (order.is_prepaid ? 'online' : 'cod'),
-            customer_name: order.customer_name || 'Khách hàng',
-            items: Array.isArray(order.items) ? order.items : [{
-              product_name: order.product_name || 'Sản phẩm',
-              quantity: order.quantity || 1,
-              price: order.price || order.total_amount || 0
-            }]
+            payment_method:
+              order.payment_method || (order.is_prepaid ? "online" : "cod"),
+            customer_name: order.customer_name || "Khách hàng",
+            items: Array.isArray(order.items)
+              ? order.items
+              : [
+                  {
+                    product_name: order.product_name || "Sản phẩm",
+                    quantity: order.quantity || 1,
+                    price: order.price || order.total_amount || 0,
+                  },
+                ],
           };
         });
         // console.log('Processed orders:', processedOrders);
         setOrders(processedOrders);
       } else {
-        console.log('No orders found or invalid data structure');
+        console.log("No orders found or invalid data structure");
         setOrders([]);
       }
     } catch (error) {
-      console.error('Failed to fetch orders:', error);
-      if (error.message.includes('đăng nhập lại')) {
-        window.location.href = '/login';
+      console.error("Failed to fetch orders:", error);
+      if (error.message.includes("đăng nhập lại")) {
+        window.location.href = "/login";
       } else {
         setError(error.message);
         toast.error(error.message);
@@ -231,35 +236,40 @@ const Orders = () => {
   };
 
   useEffect(() => {
-    console.log('Orders component mounted');
+    console.log("Orders component mounted");
     fetchOrders();
   }, []);
 
   // Monitor orders state changes
   useEffect(() => {
-    console.log('Orders state updated:', {
+    console.log("Orders state updated:", {
       orders,
       ordersLength: orders.length,
-      firstOrder: orders[0]
+      firstOrder: orders[0],
     });
   }, [orders]);
 
-  const filteredOrders = orders.filter(order => {
-    console.log('Filtering order:', order);
-    const matchesSearch = searchTerm === '' ||
+  const filteredOrders = orders.filter((order) => {
+    console.log("Filtering order:", order);
+    const matchesSearch =
+      searchTerm === "" ||
       (order.order_id && order.order_id.toString().includes(searchTerm)) ||
-      (order.items && order.items.some(item =>
-        item.product_name && item.product_name.toLowerCase().includes(searchTerm.toLowerCase())
-      ));
+      (order.items &&
+        order.items.some(
+          (item) =>
+            item.product_name &&
+            item.product_name.toLowerCase().includes(searchTerm.toLowerCase())
+        ));
 
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "all" || order.status === statusFilter;
 
-    console.log('Filter results:', {
+    console.log("Filter results:", {
       orderId: order.order_id,
       matchesSearch,
       matchesStatus,
       searchTerm,
-      statusFilter
+      statusFilter,
     });
 
     return matchesSearch && matchesStatus;
@@ -267,26 +277,26 @@ const Orders = () => {
 
   // Monitor filtered orders
   useEffect(() => {
-    console.log('Filtered orders:', {
+    console.log("Filtered orders:", {
       filteredOrders,
       filteredLength: filteredOrders.length,
       searchTerm,
-      statusFilter
+      statusFilter,
     });
   }, [filteredOrders, searchTerm, statusFilter]);
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'pending':
-        return 'Chờ xử lý';
-      case 'processing':
-        return 'Đang xử lý';
-      case 'completed':
-        return 'Hoàn thành';
-      case 'cancelled':
-        return 'Đã hủy';
-      case 'delivered':
-        return 'Đã giao hàng';
+      case "pending":
+        return "Chờ xử lý";
+      case "processing":
+        return "Đang xử lý";
+      case "completed":
+        return "Hoàn thành";
+      case "cancelled":
+        return "Đã hủy";
+      case "delivered":
+        return "Đã giao hàng";
       default:
         return status;
     }
@@ -325,7 +335,10 @@ const Orders = () => {
         <Title>Đơn hàng của tôi</Title>
 
         <SearchContainer>
-          <form onSubmit={handleSearch} style={{ display: 'flex', gap: '10px', flex: 1 }}>
+          <form
+            onSubmit={handleSearch}
+            style={{ display: "flex", gap: "10px", flex: 1 }}
+          >
             <SearchInput
               type="text"
               placeholder="Tìm kiếm theo mã đơn hàng hoặc sản phẩm"
@@ -356,9 +369,9 @@ const Orders = () => {
               <FaShoppingBag />
             </EmptyIcon>
             <EmptyText>
-              {searchTerm || statusFilter !== 'all'
-                ? 'Không tìm thấy đơn hàng'
-                : 'Bạn chưa có đơn hàng nào'}
+              {searchTerm || statusFilter !== "all"
+                ? "Không tìm thấy đơn hàng"
+                : "Bạn chưa có đơn hàng nào"}
             </EmptyText>
             <Button as={Link} to="/" variant="primary">
               Tiếp tục mua sắm
@@ -367,13 +380,15 @@ const Orders = () => {
         ) : (
           <OrderList>
             {filteredOrders.map((order) => {
-              console.log('Rendering order:', order);
+              console.log("Rendering order:", order);
               return (
                 <OrderCard key={order.order_id}>
                   <OrderHeader>
                     <OrderId>#{order.order_id}</OrderId>
                     <OrderDate>{formatDate(order.created_at)}</OrderDate>
-                    <OrderStatus status={order.status}>{getStatusText(order.status)}</OrderStatus>
+                    <OrderStatus status={order.status}>
+                      {getStatusText(order.status)}
+                    </OrderStatus>
                   </OrderHeader>
                   <OrderDetails>
                     <OrderDetail>
@@ -382,11 +397,15 @@ const Orders = () => {
                     </OrderDetail>
                     <OrderDetail>
                       <span>Tổng tiền:</span>
-                      <span>{order.total_amount.toLocaleString('vi-VN')}đ</span>
+                      <span>{order.total_amount.toLocaleString("vi-VN")}đ</span>
                     </OrderDetail>
                     <OrderDetail>
                       <span>Phương thức thanh toán:</span>
-                      <span>{order.payment_method === 'cod' ? 'Thanh toán khi nhận hàng' : 'Thanh toán online'}</span>
+                      <span>
+                        {order.payment_method === "cod"
+                          ? "Thanh toán khi nhận hàng"
+                          : "Thanh toán online"}
+                      </span>
                     </OrderDetail>
                   </OrderDetails>
                   <OrderActions>
@@ -410,4 +429,4 @@ const Orders = () => {
   );
 };
 
-export default Orders; 
+export default Orders;

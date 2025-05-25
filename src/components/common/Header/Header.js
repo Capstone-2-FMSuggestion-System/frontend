@@ -62,7 +62,7 @@ const SearchContainer = styled.div`
   display: flex;
   flex: 0 1 650px;
   margin: 0 auto;
-  
+
   @media (max-width: 768px) {
     flex: 1;
     margin: 0 16px;
@@ -214,15 +214,13 @@ const Header = () => {
           ) : (
             <ActionButton to="/login">
               <FaUser />
-              Login/Register
+              Đăng nhập/Đăng ký
             </ActionButton>
           )}
           <ActionButton to="/cart">
             <FaShoppingCart />
             Giỏ hàng
-            {cartItemCount > 0 && (
-              <CartBadge>{cartItemCount}</CartBadge>
-            )}
+            {cartItemCount > 0 && <CartBadge>{cartItemCount}</CartBadge>}
           </ActionButton>
         </ActionItems>
       </TopBar>
