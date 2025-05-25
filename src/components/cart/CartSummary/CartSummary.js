@@ -321,10 +321,10 @@ const CartSummary = ({ onCheckout }) => {
         <span className="value">{formatCurrency(orderSummary.subtotal)}</span>
       </SummaryRow>
       
-      <SummaryRow>
+      {/* <SummaryRow>
         <span className="label">Giảm giá</span>
         <span className="value">-{formatCurrency(orderSummary.discount)}</span>
-      </SummaryRow>
+      </SummaryRow> */}
       
       <Divider />
       
@@ -333,7 +333,7 @@ const CartSummary = ({ onCheckout }) => {
         <span className="value">{formatCurrency(orderSummary.total)}</span>
       </TotalRow>
       
-      <CouponForm>
+      {/* <CouponForm>
         <CouponInput>
           <input
             type="text"
@@ -353,7 +353,7 @@ const CartSummary = ({ onCheckout }) => {
             {couponMessage}
           </CouponMessage>
         )}
-      </CouponForm>
+      </CouponForm> */}
       
       <CheckoutButton
         variant="secondary"

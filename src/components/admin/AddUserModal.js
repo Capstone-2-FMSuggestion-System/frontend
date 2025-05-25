@@ -344,7 +344,7 @@ const AddUserModal = ({ isOpen, onClose, onSave, isLoading = false }) => {
                   >
                     <option value="user">User</option>
                     <option value="admin">Admin</option>
-                    <option value="staff">Staff</option>
+                    {/* <option value="staff">Staff</option> */}
                   </FormSelect>
                 </FormGroup>
               </FormColumn>

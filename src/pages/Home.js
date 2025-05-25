@@ -20,7 +20,7 @@ const HeroSection = styled.section`
   height: 60vh;
   min-height: 400px;
   background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)),
-    url("/assets/hero-bg.jpg");
+    url("/images/home.png");
   background-size: cover;
   background-position: center;
   display: flex;
@@ -45,6 +45,7 @@ const HeroSection = styled.section`
     pointer-events: none;
   }
 `;
+
 
 const HeroContent = styled.div`
   max-width: 600px;
@@ -319,7 +320,7 @@ const Home = () => {
         <HeroContent>
           <h1>Bữa ăn ngon cho gia đình bạn</h1>
           <p>Thực phẩm tươi ngon, đảm bảo chất lượng, giao hàng tận nhà</p>
-          <Button to="/products">Đặt hàng ngay</Button>
+          {/* <Button to="/products">Đặt hàng ngay</Button> */}
         </HeroContent>
       </HeroSection>
 

@@ -206,7 +206,7 @@ const UserProfile = ({ activeTab = 'profile', children, onTabChange }) => {
               <FaShoppingBag /> Đơn Mua
             </TabLink>
           </NavItem>
-          <NavItem>
+          {/* <NavItem>
             <TabLink 
               href="#vouchers" 
               active={activeTab === 'vouchers' ? 1 : 0}
@@ -217,7 +217,7 @@ const UserProfile = ({ activeTab = 'profile', children, onTabChange }) => {
             >
               <FaTicketAlt /> Kho Voucher
             </TabLink>
-          </NavItem>
+          </NavItem> */}
           {/* <NavItem>
             <NavLink to="/wishlist" active={activeTab === 'wishlist' ? 1 : 0}>
               <FaHeart /> Sản Phẩm Yêu Thích

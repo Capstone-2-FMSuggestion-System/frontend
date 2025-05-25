@@ -369,7 +369,7 @@ const EditUserModal = ({ user, isOpen, onClose, onSave, isLoading = false }) => 
                   >
                     <option value="admin">Admin</option>
                     <option value="user">User</option>
-                    <option value="staff">Staff</option>
+                    {/* <option value="staff">Staff</option> */}
                   </FormSelect>
                 </FormGroup>
               </FormColumn>

@@ -304,7 +304,7 @@ const Login = () => {
           )}
         </Formik>
 
-        <OrDivider>
+        {/* <OrDivider>
           <span>Hoặc đăng nhập / đăng ký với</span>
         </OrDivider>
 
@@ -315,7 +315,7 @@ const Login = () => {
           <FacebookButton onClick={handleFacebookLogin}>
             <FaFacebook /> Tiếp tục với Facebook
           </FacebookButton>
-        </div>
+        </div> */}
 
         <SignupPrompt>
           Chưa có tài khoản?

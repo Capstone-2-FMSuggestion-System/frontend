@@ -556,7 +556,7 @@ const UserTable = ({
                 <option value="all">Tất cả vai trò</option>
                 <option value="admin">Admin</option>
                 <option value="user">User</option>
-                <option value="staff">Staff</option>
+                {/* <option value="staff">Staff</option> */}
               </FilterSelect>
             </FilterLabel>
             

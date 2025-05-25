@@ -164,10 +164,10 @@ const PaymentSuccess = () => {
             <span>{formatCurrency(order.subtotal)}</span>
           </OrderDetail>
           
-          <OrderDetail discount={true}>
+          {/* <OrderDetail discount={true}>
             <span>Giảm giá:</span>
             <span>-{formatCurrency(order.discount_amount)}</span>
-          </OrderDetail>
+          </OrderDetail> */}
           
           <OrderDetail total={true} bold={true}>
             <span>Tổng tiền:</span>

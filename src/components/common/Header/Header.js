@@ -258,7 +258,7 @@ const Header = () => {
       <NavBar>
         <NavLink to="/">Trang chủ</NavLink>
         <NavLink to="/categories">Các loại thực phẩm</NavLink>
-        <NavLink to="/promotions">Giảm giá</NavLink>
+        {/* <NavLink to="/promotions">Giảm giá</NavLink> */}
         <NavLink to="/about">Thông tin về chúng tôi</NavLink>
       </NavBar>
     </HeaderContainer>
