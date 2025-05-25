@@ -109,9 +109,9 @@ const AlertMessage = styled.div`
 `;
 
 const Cart = () => {
-  const { cart, clearCart } = useContext(CartContext);
+  const { cart } = useContext(CartContext);
   const location = useLocation();
-  
+
   // Check if we have payment status information from redirect
   useEffect(() => {
     if (location.state?.paymentCancelled) {
@@ -120,9 +120,9 @@ const Cart = () => {
       toast.error(location.state.message || 'Thanh toán không thành công');
     }
   }, [location.state]);
-  
+
   const isCartEmpty = cart.items.length === 0;
-  
+
   return (
     <MainLayout>
       <CartContainer>
@@ -134,21 +134,21 @@ const Cart = () => {
             <FaArrowLeft /> Tiếp tục mua sắm
           </ContinueShopping>
         </CartHeader>
-        
+
         {location.state?.paymentCancelled && (
           <AlertMessage>
             <FaExclamationTriangle />
             <p>{location.state.message || 'Bạn đã hủy thanh toán. Vui lòng thử lại hoặc chọn phương thức thanh toán khác.'}</p>
           </AlertMessage>
         )}
-        
+
         {location.state?.paymentFailed && (
           <AlertMessage>
             <FaExclamationTriangle />
             <p>{location.state.message || 'Thanh toán không thành công. Vui lòng thử lại sau.'}</p>
           </AlertMessage>
         )}
-        
+
         <CartContent>
           <CartItems>
             {isCartEmpty ? (
@@ -168,7 +168,7 @@ const Cart = () => {
               </>
             )}
           </CartItems>
-          
+
           {!isCartEmpty && (
             <CartSummary />
           )}

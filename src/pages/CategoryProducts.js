@@ -60,7 +60,7 @@ const BreadcrumbNav = styled.nav`
 
 const ContentContainer = styled.div`
   display: grid;
-  grid-template-columns: 250px 1fr;
+  grid-template-columns: ${props => props.hassidebar ? '250px 1fr' : '1fr'};
   gap: 20px;
   
   @media (max-width: 768px) {
@@ -129,9 +129,17 @@ const SortSelector = styled.select`
 
 const ProductGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
   margin-bottom: 30px;
+  
+  @media (max-width: 900px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const NoProducts = styled.div`
@@ -199,6 +207,12 @@ const CategoryProducts = () => {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const { categories } = useCategory();
+
+  // Xử lý trường hợp đặc biệt cho "tất cả sản phẩm" - phải khai báo sớm
+  const isAllProducts = !id || id === 'all' || location.pathname === '/products';
+  const categoryId = isAllProducts ? 'all' : id;
+
   const [category, setCategory] = useState(null);
   const [rootCategoryId, setRootCategoryId] = useState(null);
   const [originalRootId, setOriginalRootId] = useState(null);
@@ -206,6 +220,7 @@ const CategoryProducts = () => {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
   const [filters, setFilters] = useState({
     sort: 'newest',
     minPrice: undefined,
@@ -341,6 +356,14 @@ const CategoryProducts = () => {
 
     isProcessingRef.current = true;
 
+    // Xử lý trường hợp đặc biệt cho "tất cả sản phẩm"
+    if (categoryId === 'all') {
+      console.log('CategoryProducts: Handling all products case');
+      setLoading(false);
+      isProcessingRef.current = false;
+      return;
+    }
+
     // Kiểm tra tính hợp lệ của id
     const parsedId = parseInt(id);
     if (isNaN(parsedId)) {
@@ -388,35 +411,45 @@ const CategoryProducts = () => {
     setTimeout(() => {
       isProcessingRef.current = false;
     }, 300);
-  }, [location.pathname, id, memoizedFetchSubcategories, location.state, originalRootId]);
+  }, [location.pathname, id, memoizedFetchSubcategories, location.state, originalRootId, categoryId]);
 
-  // Reset trang về 1 khi id thay đổi
+  // Reset trang về 1 khi categoryId thay đổi
   useEffect(() => {
-    // Khi id thay đổi, reset trang về 1
-    console.log('CategoryProducts: Detected id change, resetting to page 1');
+    // Khi categoryId thay đổi, reset trang về 1
+    console.log('CategoryProducts: Detected categoryId change, resetting to page 1');
     setCurrentPage(1);
-  }, [id]);
+  }, [categoryId]);
 
   // Lấy thông tin category từ ID
   useEffect(() => {
     // Ngăn chặn xử lý nếu đang trong quá trình fetch hoặc ID chưa thay đổi
-    if (processingCategoryInfoRef.current || id === prevIdRef.current) {
+    if (processingCategoryInfoRef.current || categoryId === prevIdRef.current) {
       return;
     }
 
     processingCategoryInfoRef.current = true;
-    prevIdRef.current = id;
+    prevIdRef.current = categoryId;
 
     const fetchCategoryInfo = async () => {
       try {
+        // Xử lý trường hợp đặc biệt cho "tất cả sản phẩm"
+        if (categoryId === 'all') {
+          setCategory({
+            category_id: 'all',
+            name: 'Tất cả sản phẩm',
+            description: 'Hiển thị tất cả sản phẩm có sẵn trong cửa hàng'
+          });
+          return;
+        }
+
         const allCategories = await productService.getCategories();
-        const categoryInfo = allCategories.find(c => c.category_id === parseInt(id));
+        const categoryInfo = allCategories.find(c => c.category_id === parseInt(categoryId));
 
         if (categoryInfo) {
           setCategory(categoryInfo);
         } else {
           setCategory({
-            category_id: parseInt(id),
+            category_id: parseInt(categoryId),
             name: 'Danh mục sản phẩm',
             description: 'Sản phẩm thuộc danh mục này'
           });
@@ -427,7 +460,7 @@ const CategoryProducts = () => {
         mcpErrorsRef.current.push({
           message: `Failed to fetch category info: ${error.message}`,
           timestamp: new Date().toISOString(),
-          context: { id }
+          context: { categoryId }
         });
       } finally {
         setTimeout(() => {
@@ -437,16 +470,16 @@ const CategoryProducts = () => {
     };
 
     fetchCategoryInfo();
-  }, [id]);
+  }, [categoryId]);
 
   // Lấy sản phẩm thuộc category
   const fetchProducts = useCallback(async () => {
-    if (!id) return;
+    if (!categoryId) return;
 
     setLoading(true);
     try {
       console.log('===== FETCHING PRODUCTS =====');
-      console.log('Danh mục ID:', id);
+      console.log('Danh mục ID:', categoryId);
       console.log('Trang hiện tại:', currentPage);
       console.log('Bộ lọc:', filters);
 
@@ -470,7 +503,7 @@ const CategoryProducts = () => {
         default: sort_by = "created_at";
       }
 
-      const result = await productService.getProductsByCategory(id, {
+      const result = await productService.getProductsByCategory(categoryId, {
         include_subcategories: true,
         page: currentPage,
         limit: 9,
@@ -493,14 +526,16 @@ const CategoryProducts = () => {
 
       setProducts(result.products || []);
       setTotalPages(result.pagination?.total_pages || 1);
+      setTotalProducts(result.pagination?.total_products || result.products?.length || 0);
     } catch (error) {
       console.error('Lỗi khi lấy sản phẩm:', error);
       setProducts([]);
       setTotalPages(1);
+      setTotalProducts(0);
     } finally {
       setLoading(false);
     }
-  }, [id, currentPage, filters]);
+  }, [categoryId, currentPage, filters]);
 
   // Fetch sản phẩm khi id, trang hoặc bộ lọc thay đổi
   useEffect(() => {
@@ -563,29 +598,38 @@ const CategoryProducts = () => {
               <FaAngleRight />
             </li>
             <li>
-              <Link to={`/categories/${id}`}>
-                {category ? category.name : 'Đang tải...'}
+              <Link to={isAllProducts ? '/products' : `/categories/${id}`}>
+                {isAllProducts ? 'Tất cả sản phẩm' : (category ? category.name : 'Đang tải...')}
               </Link>
             </li>
           </ul>
         </BreadcrumbNav>
 
-        <ContentContainer>
-          <CategorySidebar
-            categoryId={originalRootId || rootCategoryId}
-            onFilterChange={handleFilterChange}
-          />
+        <ContentContainer hassidebar={!isAllProducts}>
+          {!isAllProducts && (
+            <CategorySidebar
+              categoryId={originalRootId || rootCategoryId}
+              onFilterChange={handleFilterChange}
+            />
+          )}
 
           <MainContent>
-            {category && (
+            {(category || isAllProducts) && (
               <CategoryHeader>
-                <CategoryTitle>{category.name}</CategoryTitle>
+                <CategoryTitle>{isAllProducts ? 'Tất cả sản phẩm' : category.name}</CategoryTitle>
+                {isAllProducts && (
+                  <CategoryDescription>Hiển thị tất cả sản phẩm có sẵn trong cửa hàng</CategoryDescription>
+                )}
               </CategoryHeader>
             )}
 
             <ProductsHeader>
               <ProductCount>
-                {loading ? 'Đang tải...' : `Hiển thị ${products.length} sản phẩm`}
+                {loading ? 'Đang tải...' : (
+                  totalPages > 1
+                    ? `Hiển thị ${(currentPage - 1) * 9 + 1}-${Math.min(currentPage * 9, totalProducts)} sản phẩm (Trang ${currentPage}/${totalPages})`
+                    : `Hiển thị ${products.length} sản phẩm`
+                )}
               </ProductCount>
               <SortSelector
                 value={filters.sort}
@@ -606,24 +650,59 @@ const CategoryProducts = () => {
             ) : products.length > 0 ? (
               <>
                 <ProductGrid>
-                  {products.map(product => (
-                    <CategoryProductItem
-                      key={product.product_id || product.id}
-                      product={{
-                        id: product.product_id || product.id,
-                        name: product.name,
-                        price: product.price || product.discountPrice,
-                        originalPrice: product.original_price || product.originalPrice,
-                        discountPercent: product.discount_percent || 0,
-                        image: product.image || product.images?.[0],
-                        images: product.images || [],
-                        rating: product.average_rating || 0,
-                        reviewCount: product.review_count || 0,
-                        unit: product.unit || 'kg',
-                        inStock: product.in_stock !== false
-                      }}
-                    />
-                  ))}
+                  {products.map(product => {
+                    // Xử lý hình ảnh một cách tốt hơn
+                    const getProductImage = () => {
+                      // Ưu tiên image trực tiếp
+                      if (product.image && typeof product.image === 'string' && product.image.trim() !== '') {
+                        return product.image;
+                      }
+
+                      // Kiểm tra mảng images
+                      if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+                        const firstImage = product.images[0];
+                        // Nếu là object có image_url
+                        if (typeof firstImage === 'object' && firstImage.image_url && typeof firstImage.image_url === 'string' && firstImage.image_url.trim() !== '') {
+                          return firstImage.image_url;
+                        }
+                        // Nếu là string URL
+                        if (typeof firstImage === 'string' && firstImage.trim() !== '') {
+                          return firstImage;
+                        }
+                      }
+
+                      // Fallback image với placeholder tốt hơn
+                      return 'https://via.placeholder.com/300x300/f5f5f5/999999?text=Không+có+ảnh';
+                    };
+
+                    // Xử lý giá cả
+                    const displayPrice = product.price || product.discountPrice || 0;
+                    const displayOriginalPrice = product.original_price || product.originalPrice || 0;
+
+                    // Kiểm tra có giảm giá không
+                    const hasDiscount = displayOriginalPrice > displayPrice && displayOriginalPrice > 0;
+
+                    return (
+                      <CategoryProductItem
+                        key={product.product_id || product.id || Math.random()}
+                        product={{
+                          id: product.product_id || product.id,
+                          name: product.name || 'Sản phẩm',
+                          price: displayPrice,
+                          originalPrice: displayOriginalPrice,
+                          discountPrice: hasDiscount ? displayPrice : null,
+                          hasDiscount: hasDiscount,
+                          discountPercent: hasDiscount ? Math.round(((displayOriginalPrice - displayPrice) / displayOriginalPrice) * 100) : 0,
+                          image: getProductImage(),
+                          images: product.images || [],
+                          rating: product.average_rating || 0,
+                          reviewCount: product.review_count || 0,
+                          unit: product.unit || 'kg',
+                          inStock: product.in_stock !== false && (product.stock_quantity || 0) > 0
+                        }}
+                      />
+                    );
+                  })}
                 </ProductGrid>
 
                 {totalPages > 1 && (

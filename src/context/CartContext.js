@@ -28,6 +28,7 @@ export const CartProvider = ({ children }) => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState(null);
   const [syncRetryCount, setSyncRetryCount] = useState(0);
+  const [skipNextSync, setSkipNextSync] = useState(false); // Flag để skip sync sau khi clear cart
   const MAX_RETRY_COUNT = 3;
   const RETRY_DELAY = 1000; // 1 giây
 
@@ -113,10 +114,13 @@ export const CartProvider = ({ children }) => {
     localStorage.setItem('cart', JSON.stringify(cart));
 
     // Nếu người dùng đã đăng nhập, đồng bộ giỏ hàng với server
-    if (currentUser) {
+    if (currentUser && !skipNextSync) {
       syncCartWithServer();
+    } else if (skipNextSync) {
+      // Reset flag sau khi skip
+      setSkipNextSync(false);
     }
-  }, [cart, currentUser]);
+  }, [cart, currentUser, skipNextSync]);
 
   // Đồng bộ giỏ hàng với server
   const syncCartWithServer = async () => {
@@ -288,17 +292,9 @@ export const CartProvider = ({ children }) => {
         );
 
         if (!itemToRemove) {
-          console.error('Cart item not found:', cartItemId);
-          toast.error({
-            title: 'Lỗi',
-            message: 'Không tìm thấy sản phẩm trong giỏ hàng',
-            duration: 3000
-          });
+          console.warn('Cart item not found in local state:', cartItemId);
+          // Thay vì hiển thị lỗi, chỉ log warning và return
           return;
-        }
-
-        if (itemToRemove.cart_item_id) {
-          await userService.removeFromCart(itemToRemove.cart_item_id);
         }
 
         // Cập nhật state local trước
@@ -314,6 +310,16 @@ export const CartProvider = ({ children }) => {
 
         setCart(updatedCart);
         localStorage.setItem('cart', JSON.stringify(updatedCart));
+
+        // Sau đó xóa từ server nếu có cart_item_id
+        if (itemToRemove.cart_item_id) {
+          try {
+            await userService.removeFromCart(itemToRemove.cart_item_id);
+          } catch (error) {
+            console.warn('Item already removed from server or not found:', itemToRemove.cart_item_id);
+            // Không hiển thị lỗi nếu item đã bị xóa từ server
+          }
+        }
 
         toast.success({
           title: 'Xóa khỏi giỏ hàng',
@@ -505,27 +511,50 @@ export const CartProvider = ({ children }) => {
       if (currentUser) {
         // Nếu đã đăng nhập, xóa tất cả items trong database
         const currentCart = JSON.parse(localStorage.getItem('cart') || '{"items": [], "totalAmount": 0}');
+
+        // Xóa từng item một cách an toàn, không hiển thị toast cho từng item
         for (const item of currentCart.items) {
           if (item.cart_item_id) {
-            await userService.removeFromCart(item.cart_item_id);
+            try {
+              await userService.removeFromCart(item.cart_item_id);
+            } catch (error) {
+              // Bỏ qua lỗi nếu item không tồn tại (có thể đã bị xóa)
+              console.warn('Item already removed or not found:', item.cart_item_id);
+            }
           }
         }
 
         // Cập nhật giỏ hàng trống từ server
-        const updatedCart = await authService.getUserCart();
+        try {
+          const updatedCart = await authService.getUserCart();
 
-        // Đảm bảo cấu trúc dữ liệu giỏ hàng nhất quán
-        const formattedCart = {
-          items: updatedCart.items || [],
-          totalAmount: updatedCart.totalAmount || 0,
-          totalItems: updatedCart.totalItems || 0,
-          discount: 0,
-          couponCode: null,
-          discountedTotal: updatedCart.discountedTotal || 0
-        };
+          // Đảm bảo cấu trúc dữ liệu giỏ hàng nhất quán
+          const formattedCart = {
+            items: updatedCart.items || [],
+            totalAmount: updatedCart.totalAmount || 0,
+            totalItems: updatedCart.totalItems || 0,
+            discount: 0,
+            couponCode: null,
+            discountedTotal: updatedCart.discountedTotal || 0
+          };
 
-        setCart(formattedCart);
-        localStorage.setItem('cart', JSON.stringify(formattedCart));
+          setCart(formattedCart);
+          localStorage.setItem('cart', JSON.stringify(formattedCart));
+        } catch (error) {
+          // Nếu không lấy được từ server, set cart trống
+          const emptyCart = {
+            items: [],
+            totalAmount: 0,
+            totalItems: 0,
+            discount: 0,
+            couponCode: null,
+            discountedTotal: 0
+          };
+          setCart(emptyCart);
+          localStorage.setItem('cart', JSON.stringify(emptyCart));
+        }
+
+        // Chỉ hiển thị 1 toast duy nhất
         toast.success('Đã xóa tất cả sản phẩm khỏi giỏ hàng');
       } else {
         // Nếu chưa đăng nhập, xóa từ localStorage
@@ -543,8 +572,97 @@ export const CartProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Error clearing cart:', error);
-      toast.error('Không thể xóa giỏ hàng');
-      throw error;
+      // Vẫn set cart trống để đảm bảo UI được cập nhật
+      const emptyCart = {
+        items: [],
+        totalAmount: 0,
+        totalItems: 0,
+        discount: 0,
+        couponCode: null,
+        discountedTotal: 0
+      };
+      setCart(emptyCart);
+      localStorage.setItem('cart', JSON.stringify(emptyCart));
+      toast.error('Không thể xóa giỏ hàng hoàn toàn, nhưng đã làm sạch giao diện');
+    }
+  };
+
+  const clearCartSilently = async (skipApiCall = false) => {
+    try {
+      if (currentUser && !skipApiCall) {
+        // Nếu đã đăng nhập và không skip API call, xóa tất cả items trong database
+        const currentCart = JSON.parse(localStorage.getItem('cart') || '{"items": [], "totalAmount": 0}');
+
+        // Chỉ xóa từng item nếu có items trong cart
+        if (currentCart.items && currentCart.items.length > 0) {
+          // Xóa từng item một cách an toàn, không hiển thị toast
+          for (const item of currentCart.items) {
+            if (item.cart_item_id) {
+              try {
+                await userService.removeFromCart(item.cart_item_id);
+              } catch (error) {
+                // Bỏ qua lỗi nếu item không tồn tại (có thể đã bị xóa bởi backend)
+                console.warn('Item already removed or not found:', item.cart_item_id);
+              }
+            }
+          }
+        }
+
+        // Cập nhật giỏ hàng trống từ server
+        try {
+          const updatedCart = await authService.getUserCart();
+
+          const formattedCart = {
+            items: updatedCart.items || [],
+            totalAmount: updatedCart.totalAmount || 0,
+            totalItems: updatedCart.totalItems || 0,
+            discount: 0,
+            couponCode: null,
+            discountedTotal: updatedCart.discountedTotal || 0
+          };
+
+          setCart(formattedCart);
+          localStorage.setItem('cart', JSON.stringify(formattedCart));
+        } catch (error) {
+          // Nếu không lấy được từ server, set cart trống
+          const emptyCart = {
+            items: [],
+            totalAmount: 0,
+            totalItems: 0,
+            discount: 0,
+            couponCode: null,
+            discountedTotal: 0
+          };
+          setCart(emptyCart);
+          localStorage.setItem('cart', JSON.stringify(emptyCart));
+        }
+      } else {
+        // Nếu chưa đăng nhập hoặc skip API call (sau thanh toán), chỉ xóa local state
+        const emptyCart = {
+          items: [],
+          totalAmount: 0,
+          totalItems: 0,
+          discount: 0,
+          couponCode: null,
+          discountedTotal: 0
+        };
+        setCart(emptyCart);
+        localStorage.setItem('cart', JSON.stringify(emptyCart));
+        console.log('Cart cleared locally (skipped API calls)');
+      }
+    } catch (error) {
+      console.error('Error clearing cart silently:', error);
+      // Vẫn set cart trống để đảm bảo UI được cập nhật
+      const emptyCart = {
+        items: [],
+        totalAmount: 0,
+        totalItems: 0,
+        discount: 0,
+        couponCode: null,
+        discountedTotal: 0
+      };
+      setCart(emptyCart);
+      localStorage.setItem('cart', JSON.stringify(emptyCart));
     }
   };
 
@@ -686,16 +804,16 @@ export const CartProvider = ({ children }) => {
 
     return { totalAmount, totalItems };
   };
-  
+
   // Cập nhật thông tin giảm giá trong giỏ hàng
   const updateCartDiscountInfo = (discount, couponCode) => {
     // Đảm bảo chuyển đổi thành số và làm tròn 2 chữ số thập phân
     const discountNumber = Number(parseFloat(discount).toFixed(2)) || 0;
     const totalAmount = Number(parseFloat(cart.totalAmount).toFixed(2)) || 0;
-    
+
     // Đảm bảo discountedTotal không âm
     const discountedTotal = Math.max(0, totalAmount - discountNumber);
-    
+
     console.log('Cập nhật thông tin giảm giá:', {
       original: {
         discount,
@@ -707,21 +825,112 @@ export const CartProvider = ({ children }) => {
         discountedTotal
       }
     });
-    
+
     const updatedCart = {
       ...cart,
       discount: discountNumber,
       couponCode,
       discountedTotal
     };
-    
+
     // Lưu vào state 
     setCart(updatedCart);
-    
+
     // Lưu vào localStorage
     localStorage.setItem('cart', JSON.stringify(updatedCart));
-    
+
     return { discountNumber, discountedTotal };
+  };
+
+  // Function để force refresh cart state
+  const forceRefreshCart = () => {
+    const currentCart = JSON.parse(localStorage.getItem('cart') || '{"items": [], "totalAmount": 0}');
+    console.log('Force refreshing cart state:', currentCart);
+    setCart(currentCart);
+  };
+
+  // Function chuyên dụng để clear cart sau khi thanh toán thành công
+  const clearCartAfterPayment = async () => {
+    try {
+      console.log('=== CLEARING CART AFTER PAYMENT ===');
+      console.log('Current cart before clearing:', cart);
+
+      // Set flag để skip sync với server
+      setSkipNextSync(true);
+
+      // Sau khi thanh toán thành công, backend thường đã xử lý việc xóa cart
+      // Nên chúng ta chỉ cần clear local state mà không gọi API
+      const emptyCart = {
+        items: [],
+        totalAmount: 0,
+        totalItems: 0,
+        discount: 0,
+        couponCode: null,
+        discountedTotal: 0
+      };
+
+      // Clear localStorage trước
+      localStorage.setItem('cart', JSON.stringify(emptyCart));
+
+      // Sau đó update state
+      setCart(emptyCart);
+
+      console.log('Cart cleared locally after successful payment');
+      console.log('=== CART CLEARING COMPLETED ===');
+
+      // Force refresh để đảm bảo UI được cập nhật
+      setTimeout(() => {
+        forceRefreshCart();
+      }, 100);
+
+      // Không sync với server ngay lập tức để tránh load lại cart cũ
+      // Server đã xử lý việc clear cart sau thanh toán thành công
+    } catch (error) {
+      console.error('Error clearing cart after payment:', error);
+      // Vẫn clear local state để đảm bảo UI được cập nhật
+      setSkipNextSync(true);
+      const emptyCart = {
+        items: [],
+        totalAmount: 0,
+        totalItems: 0,
+        discount: 0,
+        couponCode: null,
+        discountedTotal: 0
+      };
+      localStorage.setItem('cart', JSON.stringify(emptyCart));
+      setCart(emptyCart);
+      setTimeout(() => {
+        forceRefreshCart();
+      }, 100);
+    }
+  };
+
+  // Function để sync cart với server một cách an toàn
+  const syncCartSafely = async () => {
+    if (!currentUser) return;
+
+    try {
+      console.log('Syncing cart safely with server...');
+      const serverCart = await authService.getUserCart();
+
+      if (serverCart) {
+        const formattedCart = {
+          items: serverCart.items || [],
+          totalAmount: serverCart.totalAmount || 0,
+          totalItems: serverCart.totalItems || 0,
+          discount: cart.discount || 0,
+          couponCode: cart.couponCode || null,
+          discountedTotal: serverCart.discountedTotal || serverCart.totalAmount || 0
+        };
+
+        setCart(formattedCart);
+        localStorage.setItem('cart', JSON.stringify(formattedCart));
+        console.log('Cart synced safely with server:', formattedCart);
+      }
+    } catch (error) {
+      console.warn('Could not sync cart with server:', error);
+      // Không throw error để tránh ảnh hưởng đến UI
+    }
   };
 
   const value = {
@@ -730,6 +939,9 @@ export const CartProvider = ({ children }) => {
     removeFromCart,
     updateQuantity,
     clearCart,
+    clearCartSilently,
+    clearCartAfterPayment,
+    syncCartSafely,
     getCartItemCount,
     saveForLater,
     removeFromSavedForLater,
@@ -741,7 +953,8 @@ export const CartProvider = ({ children }) => {
     getFinalTotal,
     isSyncing,
     syncError,
-    updateCartDiscountInfo
+    updateCartDiscountInfo,
+    forceRefreshCart
   };
 
   return (

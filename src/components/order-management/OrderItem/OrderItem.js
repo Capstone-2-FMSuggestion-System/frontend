@@ -3,8 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { FaEye, FaFileDownload, FaTruck } from 'react-icons/fa';
 import Button from '../../common/Button/Button';
+import ConfirmationModal from '../../common/ConfirmationModal/ConfirmationModal';
 import orderService from '../../../services/orderService';
 import { useToast } from '../../../context/ToastContext';
+import { isPayOSPayment, canCancelOrder, shouldShowContactToCancel, getCorrectOrderStatus } from '../../../utils/orderUtils';
 
 const OrderItemContainer = styled.div`
   background: white;
@@ -205,8 +207,32 @@ const InvoiceButton = styled(ActionButton)`
 const OrderItem = ({ order, onTrackOrder, onDownloadInvoice, onCancelOrder }) => {
   const navigate = useNavigate();
   const toast = useToast();
-  const [status, setStatus] = React.useState(order.status);
+
+  // Kiểm tra nếu đơn hàng PayOS và status là pending, tự động chuyển thành processing
+  const getInitialStatus = () => {
+    return getCorrectOrderStatus(order);
+  };
+
+  const [status, setStatus] = React.useState(getInitialStatus());
   const [loading, setLoading] = React.useState(false);
+  const [showCancelModal, setShowCancelModal] = React.useState(false);
+  const [showConfirmModal, setShowConfirmModal] = React.useState(false);
+
+  // Cập nhật status trên server nếu cần thiết
+  React.useEffect(() => {
+    const updateStatusIfNeeded = async () => {
+      if (isPayOSPayment(order.payment_method) && order.status === 'pending') {
+        try {
+          await orderService.updateOrderStatus(order.id, 'processing');
+          console.log(`Updated PayOS order ${order.id} status to processing`);
+        } catch (error) {
+          console.warn('Failed to update order status:', error);
+        }
+      }
+    };
+
+    updateStatusIfNeeded();
+  }, [order.id, order.payment_method, order.status]);
 
   const handleViewDetails = () => {
     navigate(`/orders/${order.id}`);
@@ -217,72 +243,45 @@ const OrderItem = ({ order, onTrackOrder, onDownloadInvoice, onCancelOrder }) =>
     try {
       await orderService.updateOrderStatus(order.id, 'delivered');
       setStatus('delivered');
-      toast.success({ title: 'Thành công', message: 'Đã xác nhận nhận hàng!', duration: 3000 });
+      setShowConfirmModal(false);
+      toast.success({
+        title: 'Thành công',
+        message: 'Đã xác nhận nhận hàng thành công!',
+        duration: 4000
+      });
     } catch (error) {
-      toast.error({ title: 'Lỗi', message: error.message || 'Xác nhận nhận hàng thất bại', duration: 3000 });
+      toast.error({
+        title: 'Lỗi',
+        message: error.message || 'Xác nhận nhận hàng thất bại',
+        duration: 4000
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Hàm lấy URL ảnh chính của sản phẩm
-  const getProductPrimaryImage = (item) => {
-    // Kiểm tra cấu trúc dữ liệu
-    // console.log('Item được kiểm tra:', item);
-    
-    // Trường hợp 1: item.product.images tồn tại
-    if (item.product?.images && Array.isArray(item.product.images) && item.product.images.length > 0) {
-      // Tìm ảnh có is_primary = true (hoặc các giá trị tương đương)
-      const primaryImage = item.product.images.find(img => {
-        // Kiểm tra các kiểu dữ liệu khác nhau của is_primary
-        if (img.is_primary === true) return true;
-        if (img.is_primary === 'true') return true;
-        if (img.is_primary === 1) return true;
-        if (img.is_primary === '1') return true;
-        
-        return false;
+  const handleCancelOrder = async () => {
+    setLoading(true);
+    try {
+      await orderService.cancelOrder(order.id);
+      setStatus('cancelled');
+      setShowCancelModal(false);
+      toast.success({
+        title: 'Thành công',
+        message: 'Đơn hàng đã được hủy thành công!',
+        duration: 4000
       });
-      
-      if (primaryImage && primaryImage.image_url) {
-        // console.log('Tìm thấy ảnh chính:', primaryImage.image_url);
-        return primaryImage.image_url;
+      if (onCancelOrder) {
+        onCancelOrder(order.id);
       }
-      
-      // Nếu không tìm thấy, dùng ảnh đầu tiên
-      console.log('Không tìm thấy ảnh chính, dùng ảnh đầu tiên:', item.product.images[0].image_url);
-      return item.product.images[0].image_url;
-    }
-    
-    // Trường hợp 2: item.image_url
-    if (item.image_url) {
-      console.log('Dùng item.image_url:', item.image_url);
-      return item.image_url;
-    }
-    
-    // Trường hợp 3: item.product_image
-    if (item.product_image) {
-      console.log('Dùng item.product_image:', item.product_image);
-      return item.product_image;
-    }
-    
-    // Trường hợp cuối: Placeholder
-    console.log('Không tìm thấy hình ảnh, dùng placeholder');
-    return '/images/placeholder.png';
-  };
-
-  // console.log('OrderItem received order:', order);
-  // console.log('Order items data:', order.items);
-
-  const orderItems = Array.isArray(order.items) ? order.items : [];
-
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'pending': return 'Chờ xác nhận';
-      case 'processing': return 'Đang xử lý';
-      case 'shipped': return 'Đang giao hàng';
-      case 'delivered': return 'Đã giao hàng';
-      case 'cancelled': return 'Đã hủy';
-      default: return status;
+    } catch (error) {
+      toast.error({
+        title: 'Lỗi',
+        message: error.message || 'Hủy đơn hàng thất bại',
+        duration: 4000
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -290,9 +289,9 @@ const OrderItem = ({ order, onTrackOrder, onDownloadInvoice, onCancelOrder }) =>
     try {
       const date = new Date(dateString);
       return date.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
         year: 'numeric',
-        month: 'long',
-        day: 'numeric',
         hour: '2-digit',
         minute: '2-digit'
       });
@@ -307,6 +306,68 @@ const OrderItem = ({ order, onTrackOrder, onDownloadInvoice, onCancelOrder }) =>
       currency: 'VND'
     }).format(price);
   };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'pending': return 'Chờ xác nhận';
+      case 'processing': return 'Đang xử lý';
+      case 'shipped': return 'Đang giao hàng';
+      case 'delivered': return 'Đã giao hàng';
+      case 'completed': return 'Hoàn thành';
+      case 'cancelled': return 'Đã hủy';
+      default: return status;
+    }
+  };
+
+  // Hàm lấy URL ảnh chính của sản phẩm
+  const getProductPrimaryImage = (item) => {
+    // Kiểm tra cấu trúc dữ liệu
+    // console.log('Item được kiểm tra:', item);
+
+    // Trường hợp 1: item.product.images tồn tại
+    if (item.product?.images && Array.isArray(item.product.images) && item.product.images.length > 0) {
+      // Tìm ảnh có is_primary = true (hoặc các giá trị tương đương)
+      const primaryImage = item.product.images.find(img => {
+        // Kiểm tra các kiểu dữ liệu khác nhau của is_primary
+        if (img.is_primary === true) return true;
+        if (img.is_primary === 'true') return true;
+        if (img.is_primary === 1) return true;
+        if (img.is_primary === '1') return true;
+
+        return false;
+      });
+
+      if (primaryImage && primaryImage.image_url) {
+        // console.log('Tìm thấy ảnh chính:', primaryImage.image_url);
+        return primaryImage.image_url;
+      }
+
+      // Nếu không tìm thấy, dùng ảnh đầu tiên
+      console.log('Không tìm thấy ảnh chính, dùng ảnh đầu tiên:', item.product.images[0].image_url);
+      return item.product.images[0].image_url;
+    }
+
+    // Trường hợp 2: item.image_url
+    if (item.image_url) {
+      console.log('Dùng item.image_url:', item.image_url);
+      return item.image_url;
+    }
+
+    // Trường hợp 3: item.product_image
+    if (item.product_image) {
+      console.log('Dùng item.product_image:', item.product_image);
+      return item.product_image;
+    }
+
+    // Trường hợp cuối: Placeholder
+    console.log('Không tìm thấy hình ảnh, dùng placeholder');
+    return '/images/placeholder.png';
+  };
+
+  // console.log('OrderItem received order:', order);
+  // console.log('Order items data:', order.items);
+
+  const orderItems = Array.isArray(order.items) ? order.items : [];
 
   return (
     <OrderItemContainer>
@@ -374,14 +435,19 @@ const OrderItem = ({ order, onTrackOrder, onDownloadInvoice, onCancelOrder }) =>
           <ViewButton onClick={handleViewDetails}>
             Xem chi tiết
           </ViewButton>
-          {status === 'pending' && (
-            <TrackButton style={{ background: '#dc3545', color: '#fff' }} onClick={() => onCancelOrder && onCancelOrder(order.id)}>
+          {canCancelOrder({ ...order, status }) && (
+            <TrackButton style={{ background: '#dc3545', color: '#fff' }} onClick={() => setShowCancelModal(true)}>
               Hủy đơn hàng
             </TrackButton>
           )}
+          {shouldShowContactToCancel({ ...order, status }) && (
+            <TrackButton style={{ background: '#6c757d', color: '#fff', cursor: 'not-allowed' }} disabled>
+              Liên hệ để hủy
+            </TrackButton>
+          )}
           {status === 'shipped' && (
-            <TrackButton style={{ background: '#ffc107', color: '#212529' }} onClick={handleConfirmReceived} disabled={loading}>
-              {loading ? 'Đang xác nhận...' : 'Xác nhận đã nhận hàng'}
+            <TrackButton style={{ background: '#ffc107', color: '#212529' }} onClick={() => setShowConfirmModal(true)}>
+              Xác nhận đã nhận hàng
             </TrackButton>
           )}
           {status === 'delivered' && (
@@ -391,6 +457,44 @@ const OrderItem = ({ order, onTrackOrder, onDownloadInvoice, onCancelOrder }) =>
           )}
         </ActionButtons>
       </OrderFooter>
+
+      <ConfirmationModal
+        isOpen={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        onConfirm={handleCancelOrder}
+        title="Xác nhận hủy đơn hàng"
+        message="Bạn có chắc chắn muốn hủy đơn hàng này? Hành động này không thể hoàn tác."
+        type="danger"
+        confirmText="Hủy đơn hàng"
+        cancelText="Không hủy"
+        confirmVariant="danger"
+        loading={loading}
+        orderDetails={{
+          orderId: order.orderId,
+          createdAt: formatDate(order.createdAt),
+          status: getStatusText(status),
+          totalAmount: formatPrice(order.totalAmount)
+        }}
+      />
+
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={handleConfirmReceived}
+        title="Xác nhận đã nhận hàng"
+        message="Bạn xác nhận đã nhận được hàng và hài lòng với sản phẩm?"
+        type="success"
+        confirmText="Đã nhận hàng"
+        cancelText="Chưa nhận"
+        confirmVariant="success"
+        loading={loading}
+        orderDetails={{
+          orderId: order.orderId,
+          createdAt: formatDate(order.createdAt),
+          status: getStatusText(status),
+          totalAmount: formatPrice(order.totalAmount)
+        }}
+      />
     </OrderItemContainer>
   );
 };

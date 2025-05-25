@@ -212,7 +212,7 @@ const CategoryProductItem = ({ product }) => {
     // Here you would typically call an API to update the user's wishlist
   };
 
-  // Tính toán giá và phần trăm giảm giá tương tự như trong ProductDetail.js
+  // Tính toán giá và phần trăm giảm giá
   const hasOriginalPrice = product.originalPrice || product.original_price;
   const hasDiscountPrice = product.discountPrice || product.price;
   const originalPriceValue = product.originalPrice || product.original_price || 0;
@@ -222,18 +222,34 @@ const CategoryProductItem = ({ product }) => {
   const hasDiscount = product.hasDiscount !== undefined ? product.hasDiscount :
     (hasOriginalPrice && hasDiscountPrice && originalPriceValue > displayPrice);
   const discountPercentage = hasDiscount
-    ? Math.round(((originalPriceValue - hasDiscountPrice) / originalPriceValue) * 100)
+    ? Math.round(((originalPriceValue - displayPrice) / originalPriceValue) * 100)
     : 0;
 
-  console.log('CategoryProductItem: Thông tin giảm giá:', {
-    hasOriginalPrice,
-    hasDiscountPrice,
-    originalPriceValue,
-    displayPrice,
-    hasDiscount,
-    discountPercentage
-  });
+  // Xử lý hình ảnh một cách tốt hơn
+  const getProductImage = () => {
+    // Ưu tiên image trực tiếp
+    if (product?.image && typeof product.image === 'string' && product.image.trim() !== '') {
+      return product.image;
+    }
 
+    // Kiểm tra mảng images
+    if (product?.images && Array.isArray(product.images) && product.images.length > 0) {
+      const firstImage = product.images[0];
+      // Nếu là object có image_url
+      if (typeof firstImage === 'object' && firstImage.image_url && typeof firstImage.image_url === 'string' && firstImage.image_url.trim() !== '') {
+        return firstImage.image_url;
+      }
+      // Nếu là string URL
+      if (typeof firstImage === 'string' && firstImage.trim() !== '') {
+        return firstImage;
+      }
+    }
+
+    // Fallback image
+    return 'https://via.placeholder.com/300x300/f5f5f5/999999?text=Không+có+ảnh';
+  };
+
+  const productImage = getProductImage();
   const productId = product?.id || 'undefined-id';
 
   return (
@@ -241,8 +257,12 @@ const CategoryProductItem = ({ product }) => {
       <ImageContainer className="image-container">
         <Link to={`/products/${product.id}`}>
           <img
-            src={product.image}
+            src={productImage}
             alt={product.name}
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = 'https://via.placeholder.com/300x300?text=Error+Loading';
+            }}
           />
         </Link>
         {hasDiscount && discountPercentage > 0 && (

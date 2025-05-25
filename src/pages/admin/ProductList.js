@@ -4,8 +4,9 @@ import AdminLayout from '../../layouts/AdminLayout';
 import { FaSearch, FaPlus, FaFileExcel } from 'react-icons/fa';
 import { TbDots } from 'react-icons/tb';
 import adminService from '../../services/adminService';
-import { toast } from 'react-toastify';
+import { useToast } from '../../context/ToastContext';
 import AddProductModal from '../../components/admin/AddProductModal';
+import ConfirmationModal from '../../components/common/ConfirmationModal/ConfirmationModal';
 import * as XLSX from 'xlsx';
 
 const Container = styled.div`
@@ -379,6 +380,9 @@ const ProductList = () => {
   const [menuPositions, setMenuPositions] = useState({});
   const actionButtonRefs = useRef({});
   const [sortBy, setSortBy] = useState('created_at_desc');
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  const toast = useToast();
 
   // Fetch categories for filter
   useEffect(() => {
@@ -393,11 +397,19 @@ const ProductList = () => {
           console.log('Categories state updated:', response.categories);
         } else {
           console.error('Invalid categories response format:', response);
-          toast.error('Định dạng dữ liệu danh mục không hợp lệ');
+          toast.error({
+            title: 'Lỗi',
+            message: 'Định dạng dữ liệu danh mục không hợp lệ',
+            duration: 4000
+          });
         }
       } catch (error) {
         console.error('Lỗi khi lấy danh mục:', error);
-        toast.error('Không thể tải danh mục sản phẩm');
+        toast.error({
+          title: 'Lỗi',
+          message: 'Không thể tải danh mục sản phẩm',
+          duration: 4000
+        });
       }
     };
 
@@ -446,7 +458,11 @@ const ProductList = () => {
         setTotalPages(Math.ceil(response.total / itemsPerPage));
       } catch (error) {
         console.error('Lỗi khi tải danh sách sản phẩm:', error);
-        toast.error('Không thể tải danh sách sản phẩm');
+        toast.error({
+          title: 'Lỗi',
+          message: 'Không thể tải danh sách sản phẩm',
+          duration: 4000
+        });
         setProducts([]);
       } finally {
         setLoading(false);
@@ -483,10 +499,18 @@ const ProductList = () => {
 
       if (editingProduct && editingProduct.product_id) {
         await adminService.updateProduct(editingProduct.product_id, productData);
-        toast.success('Cập nhật sản phẩm thành công');
+        toast.success({
+          title: 'Thành công',
+          message: 'Cập nhật sản phẩm thành công',
+          duration: 3000
+        });
       } else {
         await adminService.addProduct(productData);
-        toast.success('Thêm sản phẩm thành công');
+        toast.success({
+          title: 'Thành công',
+          message: 'Thêm sản phẩm thành công',
+          duration: 3000
+        });
       }
 
       handleCloseModal();
@@ -506,7 +530,11 @@ const ProductList = () => {
       setTotalPages(Math.ceil(response.total / itemsPerPage));
     } catch (error) {
       console.error('Lỗi khi lưu sản phẩm:', error);
-      toast.error(error.response?.data?.message || 'Không thể lưu sản phẩm');
+      toast.error({
+        title: 'Lỗi',
+        message: error.response?.data?.message || 'Không thể lưu sản phẩm',
+        duration: 4000
+      });
     }
   };
 
@@ -515,53 +543,74 @@ const ProductList = () => {
     if (product) {
       handleEditProduct(product);
     } else {
-      toast.error(`Không tìm thấy sản phẩm ID: ${productId}`);
+      toast.error({
+        title: 'Lỗi',
+        message: `Không tìm thấy sản phẩm ID: ${productId}`,
+        duration: 4000
+      });
     }
   };
 
   const handleCopyId = (productId) => {
     navigator.clipboard.writeText(productId);
-    toast.success(`Đã sao chép ID: ${productId}`);
+    toast.success({
+      title: 'Thành công',
+      message: `Đã sao chép ID: ${productId}`,
+      duration: 2000
+    });
     setActionMenuOpen(null);
   };
 
-  const handleDelete = async (productId) => {
-    const confirmDelete = window.confirm('Bạn có chắc chắn muốn xóa sản phẩm này không?');
-    if (confirmDelete) {
-      try {
-        await adminService.deleteProduct(productId);
-        toast.success(`Đã xóa sản phẩm ID: ${productId}`);
-
-        // Refresh product list
-        const skip = (currentPage - 1) * itemsPerPage;
-        const categoryId = categoryFilter ? parseInt(categoryFilter) : null;
-
-        // Xử lý lọc theo trạng thái
-        let stockFilter = null;
-        if (statusFilter === 'instock') {
-          stockFilter = 'available';
-        } else if (statusFilter === 'outofstock') {
-          stockFilter = 'unavailable';
-        }
-
-        const response = await adminService.getProducts(
-          skip,
-          itemsPerPage,
-          categoryId,
-          searchTerm || null,
-          stockFilter
-        );
-
-        // Sử dụng dữ liệu trả về trực tiếp
-        setProducts(response.items || []);
-        setTotalItems(response.total);
-        setTotalPages(Math.ceil(response.total / itemsPerPage));
-      } catch (error) {
-        console.error(`Lỗi khi xóa sản phẩm ID ${productId}:`, error);
-        toast.error('Đã xảy ra lỗi khi xóa sản phẩm.');
-      }
-    }
+  const handleDelete = (productId) => {
+    setConfirmDelete(productId);
     setActionMenuOpen(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmDelete) return;
+
+    try {
+      await adminService.deleteProduct(confirmDelete);
+      toast.success({
+        title: 'Thành công',
+        message: `Đã xóa sản phẩm ID: ${confirmDelete}`,
+        duration: 3000
+      });
+
+      // Refresh product list
+      const skip = (currentPage - 1) * itemsPerPage;
+      const categoryId = categoryFilter ? parseInt(categoryFilter) : null;
+
+      // Xử lý lọc theo trạng thái
+      let stockFilter = null;
+      if (statusFilter === 'instock') {
+        stockFilter = 'available';
+      } else if (statusFilter === 'outofstock') {
+        stockFilter = 'unavailable';
+      }
+
+      const response = await adminService.getProducts(
+        skip,
+        itemsPerPage,
+        categoryId,
+        searchTerm || null,
+        stockFilter
+      );
+
+      // Sử dụng dữ liệu trả về trực tiếp
+      setProducts(response.items || []);
+      setTotalItems(response.total);
+      setTotalPages(Math.ceil(response.total / itemsPerPage));
+    } catch (error) {
+      console.error(`Lỗi khi xóa sản phẩm ID ${confirmDelete}:`, error);
+      toast.error({
+        title: 'Lỗi',
+        message: 'Đã xảy ra lỗi khi xóa sản phẩm.',
+        duration: 4000
+      });
+    } finally {
+      setConfirmDelete(null);
+    }
   };
 
   const checkMenuPosition = (productId) => {
@@ -642,7 +691,11 @@ const ProductList = () => {
   const exportToExcel = async () => {
     try {
       // Hiển thị thông báo đang tải
-      toast.info('Đang chuẩn bị dữ liệu xuất...');
+      toast.info({
+        title: 'Thông tin',
+        message: 'Đang chuẩn bị dữ liệu xuất...',
+        duration: 2000
+      });
 
       // Lấy tất cả sản phẩm để xuất (không phân trang)
       const response = await adminService.getProducts(
@@ -687,10 +740,18 @@ const ProductList = () => {
       const fileName = `danh-sach-san-pham-${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(workbook, fileName);
 
-      toast.success('Xuất dữ liệu thành công');
+      toast.success({
+        title: 'Thành công',
+        message: 'Xuất dữ liệu thành công',
+        duration: 3000
+      });
     } catch (error) {
       console.error('Lỗi khi xuất dữ liệu:', error);
-      toast.error('Đã xảy ra lỗi khi xuất dữ liệu');
+      toast.error({
+        title: 'Lỗi',
+        message: 'Đã xảy ra lỗi khi xuất dữ liệu',
+        duration: 4000
+      });
     }
   };
 
@@ -982,6 +1043,18 @@ const ProductList = () => {
           setTotalItems(response.total);
           setTotalPages(Math.ceil(response.total / itemsPerPage));
         }}
+      />
+
+      <ConfirmationModal
+        isOpen={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="Xác nhận xóa sản phẩm"
+        message={`Bạn có chắc chắn muốn xóa sản phẩm ID: ${confirmDelete}? Hành động này không thể hoàn tác.`}
+        type="danger"
+        confirmText="Xóa"
+        cancelText="Hủy"
+        confirmVariant="danger"
       />
     </Container>
   );

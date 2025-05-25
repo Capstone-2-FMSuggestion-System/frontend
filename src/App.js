@@ -67,14 +67,16 @@ const App = () => {
                       {/* Public Routes */}
                       <Route path="/" element={<Home />} />
                       <Route path="/categories" element={<CategoryList />} />
+                      <Route path="/categories/all" element={<CategoryProducts />} />
                       <Route path="/categories/:id" element={<CategoryProducts />} />
                       <Route path="/categories/:id/:slug" element={<CategoryProducts />} />
+                      <Route path="/products" element={<CategoryProducts />} />
                       <Route path="/products/:id" element={<ProductDetail />} />
                       <Route path="/product/:id" element={<ProductDetail />} />
                       <Route path="/search" element={<SearchResults />} />
                       <Route path="/cart" element={<Cart />} />
                       <Route path="/about" element={<About />} />
-                      
+
                       {/* Payment Routes */}
                       <Route path="/payment/success" element={<PaymentCallback />} />
                       <Route path="/payment/cancel" element={<PaymentCallback />} />

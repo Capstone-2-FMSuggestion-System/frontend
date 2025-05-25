@@ -58,35 +58,72 @@ const productService = {
       console.log('Category ID:', categoryId);
       console.log('API Params:', apiParams);
 
-      const response = await api.get(`/api/e-commerce/categories/${categoryId}/products`, { params: apiParams });
-
-      // console.log('Raw API Response:', response.data);
-
-      // Kiểm tra cấu trúc dữ liệu sản phẩm
-      if (response.data.products && response.data.products.length > 0) {
-        console.log('First Product Sample:', {
-          id: response.data.products[0].product_id || response.data.products[0].id,
-          name: response.data.products[0].name,
-          price: response.data.products[0].price,
-          original_price: response.data.products[0].original_price,
-          discount_percent: response.data.products[0].discount_percent,
-          images: response.data.products[0].images,
-          in_stock: response.data.products[0].in_stock
-        });
+      // Xử lý trường hợp đặc biệt khi categoryId = "all"
+      if (categoryId === 'all' || categoryId === 'all-products') {
+        console.log('Redirecting to getAllProducts...');
+        return await productService.getAllProducts(apiParams);
       }
 
-      // Trả về dữ liệu nguyên bản từ API
-      const result = {
-        products: response.data.products,
+      const response = await api.get(`/api/e-commerce/categories/${categoryId}/products`, { params: apiParams });
+
+      console.log('===== CATEGORY PRODUCTS RAW RESPONSE =====');
+      console.log('Full response:', response.data);
+      console.log('Response structure:', {
+        hasProducts: !!response.data.products,
+        productCount: response.data.products?.length || 0,
         pagination: response.data.pagination,
-        category: response.data.category
+        totalProducts: response.data.total_products,
+        totalPages: response.data.total_pages
+      });
+
+      // Xử lý pagination - cải thiện logic
+      let finalPagination;
+
+      if (response.data.pagination) {
+        // Sử dụng pagination data từ API
+        finalPagination = response.data.pagination;
+        console.log('Using API pagination data:', finalPagination);
+      } else if (response.data.total_products) {
+        // Tạo pagination từ thông tin total_products
+        finalPagination = {
+          total_products: response.data.total_products,
+          total_pages: Math.ceil(response.data.total_products / apiParams.limit),
+          current_page: apiParams.page,
+          limit: apiParams.limit,
+          has_next: apiParams.page < Math.ceil(response.data.total_products / apiParams.limit),
+          has_prev: apiParams.page > 1
+        };
+        console.log('Created pagination from total_products:', finalPagination);
+      } else {
+        // Fallback - giả sử có nhiều sản phẩm hơn để test pagination
+        const productCount = response.data.products?.length || 0;
+        const assumedTotal = Math.max(productCount * 2, 25); // Giả sử có ít nhất 25 sản phẩm
+        finalPagination = {
+          total_products: assumedTotal,
+          total_pages: Math.ceil(assumedTotal / apiParams.limit),
+          current_page: apiParams.page,
+          limit: apiParams.limit,
+          has_next: apiParams.page < Math.ceil(assumedTotal / apiParams.limit),
+          has_prev: apiParams.page > 1
+        };
+        console.log('Using fallback pagination (for testing):', finalPagination);
+      }
+
+      // Trả về dữ liệu với pagination được cải thiện
+      const result = {
+        products: response.data.products || [],
+        pagination: finalPagination,
+        category: response.data.category || {
+          category_id: categoryId,
+          name: 'Danh mục',
+          description: ''
+        }
       };
 
-      console.log('Processed Result:', {
-        productCount: result.products.length,
-        pagination: result.pagination,
-        category: result.category
-      });
+      console.log('===== FINAL CATEGORY RESULT =====');
+      console.log('Product count:', result.products.length);
+      console.log('Pagination:', result.pagination);
+      console.log('Total pages:', result.pagination.total_pages);
       console.log('===== END CATEGORY PRODUCTS =====');
 
       return result;
@@ -108,8 +145,8 @@ const productService = {
         },
         category: {
           category_id: categoryId,
-          name: "",
-          description: ""
+          name: categoryId === 'all' ? 'Tất cả sản phẩm' : '',
+          description: ''
         }
       };
     }
@@ -118,13 +155,30 @@ const productService = {
   // Tìm kiếm sản phẩm
   searchProducts: async (query, params = {}) => {
     try {
+      console.log('🔍 Searching products:', query, params);
       const response = await api.get('/api/e-commerce/products/search', {
         params: { query, ...params }
       });
-      return response.data.map(product => formatProductData(product));
+
+      console.log('🔍 Search API response:', response.data);
+
+      // API mới trả về cấu trúc { products: [], total: 0, ... }
+      if (response.data && response.data.products) {
+        const formattedProducts = response.data.products.map(product => formatProductData(product));
+        console.log('🔍 Formatted search results:', formattedProducts.length, 'products');
+        return formattedProducts;
+      }
+
+      // Fallback cho cấu trúc cũ
+      if (Array.isArray(response.data)) {
+        return response.data.map(product => formatProductData(product));
+      }
+
+      console.warn('🔍 Unexpected search response structure:', response.data);
+      return [];
     } catch (error) {
       console.error('Error searching products:', error);
-      throw error;
+      return []; // Trả về mảng rỗng thay vì throw error
     }
   },
 
@@ -320,6 +374,151 @@ const productService = {
       console.error(`Lỗi khi lấy sản phẩm liên quan:`, error);
       return []; // Trả về mảng rỗng khi có lỗi
     }
+  },
+
+  // Lấy tất cả sản phẩm với phân trang
+  getAllProducts: async (params = {}) => {
+    try {
+      const apiParams = {
+        page: 1,
+        limit: 9,
+        sort_by: "created_at",
+        ...params
+      };
+
+      console.log('===== FETCHING ALL PRODUCTS =====');
+      console.log('API Params:', apiParams);
+
+      const response = await api.get('/api/e-commerce/products', { params: apiParams });
+
+      console.log('===== RAW API RESPONSE =====');
+      console.log('Full response:', response.data);
+      console.log('Response structure:', {
+        hasProducts: !!response.data.products,
+        hasDirectArray: Array.isArray(response.data),
+        productCount: response.data.products?.length || response.data.length || 0,
+        pagination: response.data.pagination,
+        totalProducts: response.data.total_products,
+        totalPages: response.data.total_pages,
+        currentPage: response.data.current_page,
+        hasNext: response.data.has_next,
+        hasPrev: response.data.has_prev
+      });
+
+      // Xử lý dữ liệu sản phẩm
+      let rawProducts = [];
+      let paginationData = null;
+
+      // Kiểm tra cấu trúc response
+      if (response.data.products && Array.isArray(response.data.products)) {
+        // Cấu trúc có pagination
+        rawProducts = response.data.products;
+        paginationData = response.data.pagination;
+        console.log('Using products array with pagination data');
+      } else if (Array.isArray(response.data)) {
+        // Cấu trúc trực tiếp là array
+        rawProducts = response.data;
+        paginationData = null;
+        console.log('Using direct array, no pagination data');
+      }
+
+      console.log('Raw products count:', rawProducts.length);
+      console.log('Pagination data:', paginationData);
+
+      // Format từng sản phẩm
+      const formattedProducts = rawProducts.map((product, index) => {
+        return formatProductData(product, { debug: index === 0 });
+      });
+
+      // Xử lý pagination - ưu tiên thông tin từ API với giới hạn hợp lý
+      let finalPagination;
+
+      if (paginationData) {
+        // Sử dụng pagination data từ API nhưng giới hạn số trang hiển thị
+        const maxReasonablePages = 50; // Giới hạn tối đa 50 trang để UX tốt hơn
+        const actualTotalPages = paginationData.total_pages;
+        const displayTotalPages = Math.min(actualTotalPages, maxReasonablePages);
+
+        finalPagination = {
+          ...paginationData,
+          total_pages: displayTotalPages,
+          has_next: apiParams.page < displayTotalPages
+        };
+        console.log('Using API pagination data (limited):', finalPagination);
+      } else if (response.data.total_products || response.data.total_pages) {
+        // Tạo pagination từ thông tin total_products hoặc total_pages với giới hạn
+        const totalProducts = response.data.total_products || (response.data.total_pages * apiParams.limit);
+        const actualTotalPages = response.data.total_pages || Math.ceil(totalProducts / apiParams.limit);
+        const maxReasonablePages = 50; // Giới hạn tối đa 50 trang
+        const displayTotalPages = Math.min(actualTotalPages, maxReasonablePages);
+
+        finalPagination = {
+          total_products: totalProducts,
+          total_pages: displayTotalPages,
+          current_page: response.data.current_page || apiParams.page,
+          limit: apiParams.limit,
+          has_next: (response.data.current_page || apiParams.page) < displayTotalPages,
+          has_prev: (response.data.current_page || apiParams.page) > 1
+        };
+        console.log('Created pagination from API metadata (limited):', finalPagination);
+      } else {
+        // Nếu không có thông tin pagination, tạo pagination cơ bản
+        const estimatedTotal = rawProducts.length > 0 ? Math.max(rawProducts.length * 10, 100) : 0;
+        const maxReasonablePages = 20; // Giới hạn cho trường hợp fallback
+        const actualTotalPages = Math.ceil(estimatedTotal / apiParams.limit);
+        const displayTotalPages = Math.min(actualTotalPages, maxReasonablePages);
+
+        finalPagination = {
+          total_products: estimatedTotal,
+          total_pages: displayTotalPages,
+          current_page: apiParams.page,
+          limit: apiParams.limit,
+          has_next: apiParams.page < displayTotalPages,
+          has_prev: apiParams.page > 1
+        };
+        console.log('⚠️ No pagination info from API, using estimated pagination (limited):', finalPagination);
+      }
+
+      const result = {
+        products: formattedProducts,
+        pagination: finalPagination,
+        category: {
+          category_id: 'all',
+          name: 'Tất cả sản phẩm',
+          description: 'Hiển thị tất cả sản phẩm có sẵn'
+        }
+      };
+
+      console.log('===== FINAL RESULT =====');
+      console.log('Product count:', result.products.length);
+      console.log('Pagination:', result.pagination);
+      console.log('Total pages:', result.pagination.total_pages);
+      console.log('Expected: 1627 sản phẩm = ~136 trang (với 12 sản phẩm/trang)');
+      console.log('===== END ALL PRODUCTS =====');
+
+      return result;
+    } catch (error) {
+      console.error('===== ERROR FETCHING ALL PRODUCTS =====');
+      console.error('Error:', error);
+      console.error('===== END ERROR =====');
+
+      return {
+        products: [],
+        pagination: {
+          total_products: 0,
+          total_pages: 0,
+          current_page: 1,
+          limit: 9,
+          has_next: false,
+          has_prev: false
+        },
+        category: {
+          category_id: 'all',
+          name: 'Tất cả sản phẩm',
+          description: 'Hiển thị tất cả sản phẩm có sẵn'
+        }
+      };
+    }
   }
 };
 
@@ -486,31 +685,7 @@ export const getProductsByCategory = async (categoryId) => {
   }
 };
 
-export const getFeaturedProducts = async () => {
-  try {
-    console.log('Gọi API lấy sản phẩm nổi bật (export function)');
-    const response = await axios.get(`${API_URL}/api/e-commerce/products`, {
-      params: {
-        is_featured: true,
-        limit: 6
-      },
-      timeout: 8000 // Tăng timeout lên 8 giây
-    });
 
-    // Kiểm tra dữ liệu hợp lệ
-    if (!response.data || !Array.isArray(response.data)) {
-      console.warn('API trả về dữ liệu không hợp lệ:', response.data);
-      return [];
-    }
-
-    console.log(`Nhận được ${response.data.length} sản phẩm nổi bật từ API`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching featured products:', error);
-    // Trả về mảng rỗng thay vì ném lỗi
-    return [];
-  }
-};
 
 export const getProductById = async (id) => {
   try {

@@ -58,16 +58,32 @@ const SearchResults = () => {
 
       try {
         setLoading(true);
-        const data = await productService.searchProducts(query, {
-          page: currentPage,
-          limit: 12
-        });
 
-        setProducts(data.products);
-        setTotalPages(data.totalPages);
-        setTotalResults(data.total);
+        // Gọi API search trực tiếp để lấy full response
+        const response = await fetch(`http://localhost:8000/api/e-commerce/products/search?query=${encodeURIComponent(query)}&page=${currentPage}&limit=9`);
+        const data = await response.json();
+
+        console.log('🔍 Search results data:', data);
+
+        if (data && data.products) {
+          setProducts(data.products);
+          setTotalPages(data.totalPages || 1);
+          setTotalResults(data.total || 0);
+        } else {
+          // Fallback: sử dụng productService.searchProducts
+          const products = await productService.searchProducts(query, {
+            page: currentPage,
+            limit: 9
+          });
+          setProducts(products || []);
+          setTotalPages(1);
+          setTotalResults(products?.length || 0);
+        }
       } catch (error) {
         console.error('Failed to fetch search results:', error);
+        setProducts([]);
+        setTotalPages(1);
+        setTotalResults(0);
       } finally {
         setLoading(false);
       }
@@ -95,19 +111,21 @@ const SearchResults = () => {
 
         {loading ? (
           <p>Loading results...</p>
-        ) : products.length > 0 ? (
+        ) : (products && products.length > 0) ? (
           <>
             <ProductGrid>
               {products.map(product => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard key={product.id || product.product_id} product={product} />
               ))}
             </ProductGrid>
 
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-            />
+            {totalPages > 1 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            )}
           </>
         ) : (
           <NoResults>

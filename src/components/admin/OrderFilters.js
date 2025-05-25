@@ -108,15 +108,15 @@ const OrderFilters = ({ onFilterChange, onSortChange, onMonthChange }) => {
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
   const [monthOpen, setMonthOpen] = useState(false);
-  
+
   const [activeFilter, setActiveFilter] = useState('all');
   const [activeSort, setActiveSort] = useState('newest');
   const [activeMonth, setActiveMonth] = useState('Tháng tư 2025');
-  
+
   const filterRef = useRef(null);
   const sortRef = useRef(null);
   const monthRef = useRef(null);
-  
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (filterRef.current && !filterRef.current.contains(event.target)) {
@@ -129,45 +129,46 @@ const OrderFilters = ({ onFilterChange, onSortChange, onMonthChange }) => {
         setMonthOpen(false);
       }
     };
-    
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-  
+
   const handleFilterChange = (filter) => {
     setActiveFilter(filter);
     setFilterOpen(false);
     onFilterChange(filter);
   };
-  
+
   const handleSortChange = (sort) => {
     setActiveSort(sort);
     setSortOpen(false);
     onSortChange(sort);
   };
-  
+
   const handleMonthChange = (month) => {
     setActiveMonth(month);
     setMonthOpen(false);
     onMonthChange(month);
   };
-  
+
   const filters = [
     { id: 'all', label: 'Tất cả đơn hàng' },
     { id: 'delivered', label: 'Đã giao' },
     { id: 'pending', label: 'Chưa giao' },
+    { id: 'completed', label: 'Hoàn thành' },
     { id: 'cancelled', label: 'Đã hủy' }
   ];
-  
+
   const sortOptions = [
     { id: 'newest', label: 'Mới nhất' },
     { id: 'oldest', label: 'Cũ nhất' },
     { id: 'amount_high', label: 'Tổng tiền: Cao → Thấp' },
     { id: 'amount_low', label: 'Tổng tiền: Thấp → Cao' }
   ];
-  
+
   const months = [
     'Tháng một 2025',
     'Tháng hai 2025',
@@ -176,21 +177,21 @@ const OrderFilters = ({ onFilterChange, onSortChange, onMonthChange }) => {
     'Tháng năm 2025',
     'Tháng sáu 2025'
   ];
-  
+
   const getFilterLabel = (filterId) => {
     const filter = filters.find(f => f.id === filterId);
     return filter ? filter.label : 'Tất cả đơn hàng';
   };
-  
+
   const getSortLabel = (sortId) => {
     const sort = sortOptions.find(s => s.id === sortId);
     return sort ? sort.label : 'Mới nhất';
   };
-  
+
   return (
     <FiltersContainer>
       <FilterDropdown ref={filterRef}>
-        <DropdownButton 
+        <DropdownButton
           onClick={() => setFilterOpen(!filterOpen)}
           isOpen={filterOpen}
         >
@@ -202,7 +203,7 @@ const OrderFilters = ({ onFilterChange, onSortChange, onMonthChange }) => {
           </ButtonContent>
           <FaChevronDown />
         </DropdownButton>
-        
+
         <AnimatePresence>
           {filterOpen && (
             <DropdownMenu
@@ -224,9 +225,9 @@ const OrderFilters = ({ onFilterChange, onSortChange, onMonthChange }) => {
           )}
         </AnimatePresence>
       </FilterDropdown>
-      
+
       <FilterDropdown ref={monthRef}>
-        <DropdownButton 
+        <DropdownButton
           onClick={() => setMonthOpen(!monthOpen)}
           isOpen={monthOpen}
         >
@@ -238,7 +239,7 @@ const OrderFilters = ({ onFilterChange, onSortChange, onMonthChange }) => {
           </ButtonContent>
           <FaChevronDown />
         </DropdownButton>
-        
+
         <AnimatePresence>
           {monthOpen && (
             <DropdownMenu
@@ -260,9 +261,9 @@ const OrderFilters = ({ onFilterChange, onSortChange, onMonthChange }) => {
           )}
         </AnimatePresence>
       </FilterDropdown>
-      
+
       <FilterDropdown ref={sortRef}>
-        <DropdownButton 
+        <DropdownButton
           onClick={() => setSortOpen(!sortOpen)}
           isOpen={sortOpen}
         >
@@ -274,7 +275,7 @@ const OrderFilters = ({ onFilterChange, onSortChange, onMonthChange }) => {
           </ButtonContent>
           <FaChevronDown />
         </DropdownButton>
-        
+
         <AnimatePresence>
           {sortOpen && (
             <DropdownMenu

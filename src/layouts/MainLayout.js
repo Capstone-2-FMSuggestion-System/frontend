@@ -6,6 +6,7 @@ import Footer from '../components/common/Footer/Footer';
 import ChatButton from '../components/chat/ChatButton/ChatButton';
 import ChatWindow from '../components/chat/ChatWindow/ChatWindow';
 
+
 const MainContainer = styled.div`
   display: flex;
   flex-direction: column;

@@ -2,20 +2,7 @@ import api from './api';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
-export const getFeaturedProducts = async () => {
-  try {
-    const response = await api.get(`/api/e-commerce/categories`, {
-      params: {
-        is_featured: true,
-        limit: 6
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching featured products:', error);
-    throw error;
-  }
-};
+
 
 export const getAllCategories = async () => {
   try {

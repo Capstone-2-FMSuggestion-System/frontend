@@ -63,24 +63,12 @@ const OrderList = ({ orders: ordersProp, loading, currentPage, totalPages, onPag
     setOrders(ordersProp || []);
   }, [ordersProp]);
 
-  const handleCancelOrder = async (orderId) => {
-    if (!window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')) return;
-    try {
-      await orderService.cancelOrder(orderId);
-      setOrders(prev => prev.map(order => order.id === orderId ? { ...order, status: 'cancelled' } : order));
-    } catch (err) {
-      alert('Hủy đơn hàng thất bại!');
-    }
+  const handleCancelOrder = (orderId) => {
+    setOrders(prev => prev.map(order => order.id === orderId ? { ...order, status: 'cancelled' } : order));
   };
 
-  const handleConfirmReceived = async (orderId) => {
-    if (!window.confirm('Bạn xác nhận đã nhận được hàng?')) return;
-    try {
-      await orderService.updateOrderStatus(orderId, 'delivered');
-      setOrders(prev => prev.map(order => order.id === orderId ? { ...order, status: 'delivered' } : order));
-    } catch (err) {
-      alert('Xác nhận nhận hàng thất bại!');
-    }
+  const handleConfirmReceived = (orderId) => {
+    setOrders(prev => prev.map(order => order.id === orderId ? { ...order, status: 'delivered' } : order));
   };
 
   if (loading) {

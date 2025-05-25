@@ -167,17 +167,45 @@ const Orders = () => {
     const fetchOrders = async () => {
       try {
         setLoading(true);
-        const response = await orderService.getUserOrders({
-          page: currentPage,
-          limit: 10,
-          search: searchTerm,
-          status: statusFilter !== 'all' ? statusFilter : undefined
-        });
+        const response = await orderService.getUserOrders();
 
-        setOrders(response);
-        // setTotalPages(response.totalPages); // Nếu muốn phân trang, cần backend trả về tổng số trang
+        if (Array.isArray(response) && response.length > 0) {
+          // Sắp xếp theo đơn hàng mới nhất (createdAt giảm dần)
+          let sortedOrders = [...response].sort((a, b) => {
+            return new Date(b.createdAt) - new Date(a.createdAt);
+          });
+
+          // Lọc theo tìm kiếm và trạng thái
+          if (searchTerm) {
+            sortedOrders = sortedOrders.filter(order =>
+              (order.orderId && order.orderId.toString().includes(searchTerm)) ||
+              (order.items && order.items.some(item =>
+                item.product_name && item.product_name.toLowerCase().includes(searchTerm.toLowerCase())
+              ))
+            );
+          }
+
+          if (statusFilter !== 'all') {
+            sortedOrders = sortedOrders.filter(order => order.status === statusFilter);
+          }
+
+          // Tính toán phân trang với 3 đơn hàng mỗi trang
+          const itemsPerPage = 3;
+          const totalPages = Math.ceil(sortedOrders.length / itemsPerPage);
+          const startIndex = (currentPage - 1) * itemsPerPage;
+          const endIndex = startIndex + itemsPerPage;
+          const paginatedOrders = sortedOrders.slice(startIndex, endIndex);
+
+          setOrders(paginatedOrders);
+          setTotalPages(totalPages);
+        } else {
+          setOrders([]);
+          setTotalPages(1);
+        }
       } catch (error) {
         console.error('Failed to fetch orders:', error);
+        setOrders([]);
+        setTotalPages(1);
       } finally {
         setLoading(false);
       }
@@ -197,6 +225,11 @@ const Orders = () => {
       setCurrentPage(1);
       setSearchTerm(e.target.value);
     }
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
   };
 
   const handleStatusFilterChange = (e) => {
@@ -224,6 +257,8 @@ const Orders = () => {
                   type="text"
                   placeholder="Tìm kiếm theo mã đơn hàng hoặc sản phẩm"
                   onKeyDown={handleSearch}
+                  value={searchTerm}
+                  onChange={handleSearchChange}
                 />
               </SearchInput>
 

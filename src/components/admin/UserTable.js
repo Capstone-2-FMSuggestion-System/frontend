@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { FaCog, FaTrashAlt, FaFileExcel, FaUserPlus, FaSearch, FaFilter } from 'react-icons/fa';
+import { toast } from 'react-hot-toast';
 import Pagination from '../common/Pagination/Pagination';
 import Button from '../common/Button/Button';
 import EditUserModal from './EditUserModal';
@@ -392,20 +393,20 @@ const ConfirmDeleteButton = styled(Button)`
   }
 `;
 
-const UserTable = ({ 
-  users = [], 
+const UserTable = ({
+  users = [],
   loading = false,
   error = null,
   pagination = {
     total: 0,
     skip: 0,
     limit: 10,
-    onPageChange: () => {}
+    onPageChange: () => { }
   },
-  onSearch = () => {},
-  onAddUser = () => {},
-  onUpdateUser = () => {},
-  onDeleteUser = () => {}
+  onSearch = () => { },
+  onAddUser = () => { },
+  onUpdateUser = () => { },
+  onDeleteUser = () => { }
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -415,23 +416,23 @@ const UserTable = ({
   const [currentUser, setCurrentUser] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
-  
+
   // Số trang dựa trên tổng số và số lượng hiển thị mỗi trang
   const pageCount = Math.ceil(pagination.total / pagination.limit);
-  
+
   const handlePageChange = (pageData) => {
     pagination.onPageChange(pageData);
   };
-  
+
   const handleExportToExcel = () => {
     // Export logic here
-    alert('Export to Excel feature will be implemented');
+    toast.info('Tính năng xuất Excel sẽ được triển khai trong tương lai');
   };
-  
+
   const handleAddNewUser = () => {
     setShowAddModal(true);
   };
-  
+
   const handleSaveNewUser = async (userData) => {
     try {
       setIsSubmitting(true);
@@ -445,7 +446,7 @@ const UserTable = ({
       setIsSubmitting(false);
     }
   };
-  
+
   const handleEditUser = (userId) => {
     const userToEdit = users.find(user => user.id === userId);
     if (userToEdit) {
@@ -456,7 +457,7 @@ const UserTable = ({
       setShowEditModal(true);
     }
   };
-  
+
   const handleSaveUser = async (userData) => {
     try {
       setIsSubmitting(true);
@@ -472,7 +473,7 @@ const UserTable = ({
       setIsSubmitting(false);
     }
   };
-  
+
   const handleDeleteUser = async (userId) => {
     try {
       setIsSubmitting(true);
@@ -486,19 +487,19 @@ const UserTable = ({
       setIsSubmitting(false);
     }
   };
-  
+
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
   };
-  
+
   const handleRoleFilterChange = (e) => {
     setRoleFilter(e.target.value);
   };
-  
+
   const handleStatusFilterChange = (e) => {
     setStatusFilter(e.target.value);
   };
-  
+
   const handleClearFilters = () => {
     setSearchTerm('');
     setRoleFilter('all');
@@ -506,7 +507,7 @@ const UserTable = ({
     // Báo cho component cha tải lại dữ liệu
     onSearch({});
   };
-  
+
   const handleSubmitSearch = (e) => {
     e.preventDefault();
     onSearch({
@@ -524,9 +525,9 @@ const UserTable = ({
       <TableHeader>
         <TableTitle>Quản lý người dùng</TableTitle>
         <ActionButtons>
-          <Button 
-            variant="contained" 
-            color="primary" 
+          <Button
+            variant="contained"
+            color="primary"
             startIcon={<FaUserPlus />}
             onClick={handleAddNewUser}
           >
@@ -534,21 +535,21 @@ const UserTable = ({
           </Button>
         </ActionButtons>
       </TableHeader>
-      
+
       <form onSubmit={handleSubmitSearch}>
         <HeaderContent style={{ padding: '15px 20px', borderBottom: '1px solid #eee' }}>
           <SearchContainer>
             <SearchIcon>
               <FaSearch />
             </SearchIcon>
-            <SearchInput 
-              type="text" 
-              placeholder="Tìm kiếm người dùng..." 
+            <SearchInput
+              type="text"
+              placeholder="Tìm kiếm người dùng..."
               value={searchTerm}
               onChange={handleSearchChange}
             />
           </SearchContainer>
-          
+
           <FilterContainer>
             <FilterLabel>
               <FaFilter />
@@ -559,7 +560,7 @@ const UserTable = ({
                 <option value="staff">Staff</option>
               </FilterSelect>
             </FilterLabel>
-            
+
             <FilterLabel>
               <FaFilter />
               <FilterSelect value={statusFilter} onChange={handleStatusFilterChange}>
@@ -568,17 +569,17 @@ const UserTable = ({
                 <option value="block">Block</option>
               </FilterSelect>
             </FilterLabel>
-            
-            <Button 
-              variant="outlined" 
-              color="primary" 
+
+            <Button
+              variant="outlined"
+              color="primary"
               type="submit"
             >
               Tìm kiếm
             </Button>
-            
-            <Button 
-              variant="text" 
+
+            <Button
+              variant="text"
               color="secondary"
               onClick={handleClearFilters}
             >
@@ -587,11 +588,11 @@ const UserTable = ({
           </FilterContainer>
         </HeaderContent>
       </form>
-      
+
       {error && (
         <ErrorMessage>{error}</ErrorMessage>
       )}
-      
+
       {loading ? (
         <LoadingMessage>Đang tải dữ liệu...</LoadingMessage>
       ) : (
@@ -632,13 +633,13 @@ const UserTable = ({
                     </TableCell>
                     <TableCell>{user.dateCreated}</TableCell>
                     <TableCell>
-                      <ActionButton 
+                      <ActionButton
                         onClick={() => handleEditUser(user.id)}
                         title="Chỉnh sửa"
                       >
                         <FaCog />
                       </ActionButton>
-                      <ActionButton 
+                      <ActionButton
                         danger
                         onClick={() => setConfirmDelete(user.id)}
                         title="Xóa"
@@ -651,20 +652,20 @@ const UserTable = ({
               )}
             </tbody>
           </StyledTable>
-          
+
           <TableFooter>
             <FooterInfo>
               Hiển thị {Math.min(users.length, pagination.limit)} / {pagination.total} người dùng
             </FooterInfo>
-            <Pagination 
-              pageCount={pageCount} 
+            <Pagination
+              pageCount={pageCount}
               onPageChange={handlePageChange}
               forcePage={pagination.skip / pagination.limit}
             />
           </TableFooter>
         </>
       )}
-      
+
       {showAddModal && (
         <AddUserModal
           isOpen={showAddModal}
@@ -673,7 +674,7 @@ const UserTable = ({
           isLoading={isSubmitting}
         />
       )}
-      
+
       {showEditModal && currentUser && (
         <EditUserModal
           isOpen={showEditModal}
@@ -683,7 +684,7 @@ const UserTable = ({
           isLoading={isSubmitting}
         />
       )}
-      
+
       {/* Xác nhận xóa người dùng */}
       {confirmDelete && userToDelete && (
         <ModalBackdrop onClick={() => !isSubmitting && setConfirmDelete(null)}>
@@ -691,7 +692,7 @@ const UserTable = ({
             <ModalHeader>
               <ModalTitle>Xác nhận xóa người dùng</ModalTitle>
             </ModalHeader>
-            
+
             <ModalBody>
               <DeleteUserInfo>
                 <DeleteUserAvatar>
@@ -707,37 +708,37 @@ const UserTable = ({
                   </DeleteUserRole>
                 </DeleteUserDetails>
               </DeleteUserInfo>
-              
+
               <UserDetailItem>
                 <UserDetailLabel>Username:</UserDetailLabel>
                 <UserDetailValue>{userToDelete.username}</UserDetailValue>
               </UserDetailItem>
-              
+
               <UserDetailItem>
                 <UserDetailLabel>Email:</UserDetailLabel>
                 <UserDetailValue>{userToDelete.email}</UserDetailValue>
               </UserDetailItem>
-              
+
               <UserDetailItem>
                 <UserDetailLabel>Ngày tạo:</UserDetailLabel>
                 <UserDetailValue>{userToDelete.dateCreated}</UserDetailValue>
               </UserDetailItem>
-              
+
               <WarningText>
                 Hành động này không thể hoàn tác. Tất cả dữ liệu liên quan đến người dùng này sẽ bị xóa vĩnh viễn khỏi hệ thống.
               </WarningText>
             </ModalBody>
-            
+
             <ModalFooter>
-              <Button 
-                variant="outlined" 
+              <Button
+                variant="outlined"
                 onClick={() => setConfirmDelete(null)}
                 disabled={isSubmitting}
               >
                 Hủy
               </Button>
-              <ConfirmDeleteButton 
-                variant="contained" 
+              <ConfirmDeleteButton
+                variant="contained"
                 onClick={() => handleDeleteUser(confirmDelete)}
                 disabled={isSubmitting}
               >

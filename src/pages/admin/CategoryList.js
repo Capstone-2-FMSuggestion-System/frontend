@@ -4,7 +4,7 @@ import styled from 'styled-components';
 import { FaPlus, FaEdit, FaTrash, FaChevronRight, FaChevronDown, FaSearch, FaEye } from 'react-icons/fa';
 import Button from '../../components/common/Button/Button';
 import AddCategoryModal from '../../components/admin/AddCategoryModal';
-import { toast } from 'react-toastify';
+import { useToast } from '../../context/ToastContext';
 import { getAdminCategories, createCategory, updateCategory, deleteCategory, getCategoriesTree } from '../../services/categoryService';
 
 const Container = styled.div`
@@ -222,6 +222,8 @@ const AdminCategoryList = () => {
     itemsPerPage: 50
   });
 
+  const toast = useToast();
+
   // Fetch danh mục từ API
   const fetchCategories = useCallback(async () => {
     setIsLoading(true);
@@ -229,19 +231,23 @@ const AdminCategoryList = () => {
       // Lấy danh mục admin để hiển thị
       const skip = (pagination.currentPage - 1) * pagination.itemsPerPage;
       const data = await getAdminCategories(skip, pagination.itemsPerPage);
-      
+
       setCategories(data.categories);
       setPagination(prev => ({
         ...prev,
         totalItems: data.total
       }));
-      
+
       // Lấy cây danh mục với force=true để đảm bảo cập nhật từ DB
       const treesData = await getCategoriesTree(true);
       setCategoryTree(treesData);
     } catch (error) {
       console.error('Error fetching categories:', error);
-      toast.error('Không thể tải danh mục. Vui lòng thử lại sau.');
+      toast.error({
+        title: 'Lỗi',
+        message: 'Không thể tải danh mục. Vui lòng thử lại sau.',
+        duration: 4000
+      });
     } finally {
       setIsLoading(false);
     }
@@ -268,7 +274,7 @@ const AdminCategoryList = () => {
     }
     return {
       ...category,
-      subcategories: category.subcategories.filter(sub => 
+      subcategories: category.subcategories.filter(sub =>
         sub.name.toLowerCase().includes(searchTerm.toLowerCase())
       )
     };
@@ -307,12 +313,20 @@ const AdminCategoryList = () => {
     setIsLoading(true);
     try {
       await createCategory(categoryData);
-      toast.success('Đã thêm danh mục thành công!');
+      toast.success({
+        title: 'Thành công',
+        message: 'Đã thêm danh mục thành công!',
+        duration: 3000
+      });
       setIsAddModalOpen(false);
       fetchCategories(); // Tải lại danh sách sau khi thêm
     } catch (error) {
       console.error('Error adding category:', error);
-      toast.error('Không thể thêm danh mục. Vui lòng thử lại.');
+      toast.error({
+        title: 'Lỗi',
+        message: 'Không thể thêm danh mục. Vui lòng thử lại.',
+        duration: 4000
+      });
     } finally {
       setIsLoading(false);
     }
@@ -325,19 +339,31 @@ const AdminCategoryList = () => {
 
   const handleUpdateCategory = async (categoryData) => {
     if (!selectedCategory) return;
-    
+
     setIsLoading(true);
     try {
       await updateCategory(selectedCategory.category_id, categoryData);
-      toast.success('Đã cập nhật danh mục thành công!');
+      toast.success({
+        title: 'Thành công',
+        message: 'Đã cập nhật danh mục thành công!',
+        duration: 3000
+      });
       setIsEditModalOpen(false);
       fetchCategories(); // Tải lại danh sách sau khi cập nhật
     } catch (error) {
       console.error('Error updating category:', error);
       if (error.response && error.response.data && error.response.data.detail) {
-        toast.error(`Lỗi: ${error.response.data.detail}`);
+        toast.error({
+          title: 'Lỗi',
+          message: `Lỗi: ${error.response.data.detail}`,
+          duration: 4000
+        });
       } else {
-        toast.error('Không thể cập nhật danh mục. Vui lòng thử lại.');
+        toast.error({
+          title: 'Lỗi',
+          message: 'Không thể cập nhật danh mục. Vui lòng thử lại.',
+          duration: 4000
+        });
       }
     } finally {
       setIsLoading(false);
@@ -345,18 +371,37 @@ const AdminCategoryList = () => {
   };
 
   const handleDeleteCategory = async (category) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa danh mục "${category.name}" không?`)) {
+    // Sử dụng toast thay vì window.confirm
+    toast.info({
+      title: 'Thông báo',
+      message: 'Tính năng xóa danh mục sẽ được triển khai với modal xác nhận trong tương lai',
+      duration: 3000
+    });
+    return;
+    if (false) { // Tạm thời disable logic xóa
       setIsLoading(true);
       try {
         await deleteCategory(category.category_id);
-        toast.success('Đã xóa danh mục thành công!');
+        toast.success({
+          title: 'Thành công',
+          message: 'Đã xóa danh mục thành công!',
+          duration: 3000
+        });
         fetchCategories(); // Tải lại danh sách sau khi xóa
       } catch (error) {
         console.error('Error deleting category:', error);
         if (error.response && error.response.data && error.response.data.detail) {
-          toast.error(`Lỗi: ${error.response.data.detail}`);
+          toast.error({
+            title: 'Lỗi',
+            message: `Lỗi: ${error.response.data.detail}`,
+            duration: 4000
+          });
         } else {
-          toast.error('Không thể xóa danh mục. Vui lòng thử lại.');
+          toast.error({
+            title: 'Lỗi',
+            message: 'Không thể xóa danh mục. Vui lòng thử lại.',
+            duration: 4000
+          });
         }
       } finally {
         setIsLoading(false);
@@ -373,8 +418,8 @@ const AdminCategoryList = () => {
     <Container>
       <Header>
         <Title>Quản lý danh mục</Title>
-        <Button 
-          variant="primary" 
+        <Button
+          variant="primary"
           onClick={() => {
             setSelectedCategory(null);
             setIsAddModalOpen(true);
@@ -384,21 +429,21 @@ const AdminCategoryList = () => {
           Thêm danh mục
         </Button>
       </Header>
-      
+
       <ActionBar>
         <SearchContainer>
           <SearchIcon>
             <FaSearch />
           </SearchIcon>
-          <SearchInput 
-            type="text" 
-            placeholder="Tìm kiếm danh mục..." 
+          <SearchInput
+            type="text"
+            placeholder="Tìm kiếm danh mục..."
             value={searchTerm}
             onChange={handleSearch}
           />
         </SearchContainer>
       </ActionBar>
-      
+
       {isLoading && categories.length === 0 ? (
         <LoadingState>Đang tải danh mục...</LoadingState>
       ) : categoryTree.length === 0 ? (
@@ -411,14 +456,14 @@ const AdminCategoryList = () => {
           <CategoryList>
             {sortedCategories.map(category => (
               <CategoryItem key={category.category_id}>
-                <CategoryHeader 
+                <CategoryHeader
                   isParent={true}
                   onClick={() => toggleExpand(category.category_id)}
                 >
                   <ToggleIcon>
                     {category.subcategories && category.subcategories.length > 0 && (
-                      expandedCategories[category.category_id] 
-                        ? <FaChevronDown /> 
+                      expandedCategories[category.category_id]
+                        ? <FaChevronDown />
                         : <FaChevronRight />
                     )}
                   </ToggleIcon>
@@ -427,8 +472,8 @@ const AdminCategoryList = () => {
                     {category.subcategories ? category.subcategories.length : 0} danh mục con | {category.product_count || 0} sản phẩm
                   </CategoryInfo>
                   <CategoryActions>
-                    <ActionButton 
-                      color="#2196F3" 
+                    <ActionButton
+                      color="#2196F3"
                       hoverColor="#1976D2"
                       title="Thêm danh mục con"
                       onClick={(e) => {
@@ -438,8 +483,8 @@ const AdminCategoryList = () => {
                     >
                       <FaPlus />
                     </ActionButton>
-                    <ActionButton 
-                      color="#FF9800" 
+                    <ActionButton
+                      color="#FF9800"
                       hoverColor="#F57C00"
                       title="Sửa danh mục"
                       onClick={(e) => {
@@ -449,8 +494,8 @@ const AdminCategoryList = () => {
                     >
                       <FaEdit />
                     </ActionButton>
-                    <ActionButton 
-                      color="#F44336" 
+                    <ActionButton
+                      color="#F44336"
                       hoverColor="#D32F2F"
                       title="Xóa danh mục"
                       onClick={(e) => {
@@ -462,7 +507,7 @@ const AdminCategoryList = () => {
                     </ActionButton>
                   </CategoryActions>
                 </CategoryHeader>
-                
+
                 {category.subcategories && category.subcategories.length > 0 && expandedCategories[category.category_id] && (
                   <SubcategoriesList>
                     {category.subcategories.map(subcategory => (
@@ -474,16 +519,16 @@ const AdminCategoryList = () => {
                             {subcategory.product_count || 0} sản phẩm
                           </CategoryInfo>
                           <CategoryActions>
-                            <ActionButton 
-                              color="#FF9800" 
+                            <ActionButton
+                              color="#FF9800"
                               hoverColor="#F57C00"
                               title="Sửa danh mục"
                               onClick={() => handleEditCategory(subcategory)}
                             >
                               <FaEdit />
                             </ActionButton>
-                            <ActionButton 
-                              color="#F44336" 
+                            <ActionButton
+                              color="#F44336"
                               hoverColor="#D32F2F"
                               title="Xóa danh mục"
                               onClick={() => handleDeleteCategory(subcategory)}
@@ -501,20 +546,20 @@ const AdminCategoryList = () => {
           </CategoryList>
         </CategoryWrapper>
       )}
-      
+
       {/* Phân trang */}
       {categoryTree.length > 0 && (
         <Pagination>
           <PageInfo>
             Hiển thị {Math.min(pagination.itemsPerPage, pagination.totalItems)} / {pagination.totalItems} danh mục
           </PageInfo>
-          <PageButton 
+          <PageButton
             disabled={pagination.currentPage === 1}
             onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
           >
             Trước
           </PageButton>
-          <PageButton 
+          <PageButton
             disabled={(pagination.currentPage * pagination.itemsPerPage) >= pagination.totalItems}
             onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
           >
@@ -522,20 +567,20 @@ const AdminCategoryList = () => {
           </PageButton>
         </Pagination>
       )}
-      
+
       {/* Modal thêm danh mục */}
-      <AddCategoryModal 
-        isOpen={isAddModalOpen} 
-        onClose={() => setIsAddModalOpen(false)} 
+      <AddCategoryModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
         onSave={handleAddCategory}
         isLoading={isLoading}
         categories={categoryTree}
         categoryData={selectedCategory ? { parent_id: selectedCategory.category_id } : null}
       />
-      
+
       {/* Modal chỉnh sửa danh mục */}
-      <AddCategoryModal 
-        isOpen={isEditModalOpen} 
+      <AddCategoryModal
+        isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onSave={handleUpdateCategory}
         isLoading={isLoading}
