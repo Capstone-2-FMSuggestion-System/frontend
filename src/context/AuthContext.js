@@ -16,7 +16,6 @@ export const AuthProvider = ({ children }) => {
         // console.log('Initializing authentication state...');
         // Sử dụng tokenUtils.getTokens() để lấy token từ cookie
         const { accessToken, tokenExpiry } = authService.tokenUtils.getTokens();
-        // console.log('Token found in cookies:', !!accessToken);
 
         if (accessToken) {
           // Kiểm tra token có hợp lệ không
@@ -47,7 +46,6 @@ export const AuthProvider = ({ children }) => {
           const user = await authService.getCurrentUser();
           if (user) {
             setCurrentUser(user);
-            // console.log('Restored user session:', user);
 
             // Tải giỏ hàng của người dùng từ server
             try {

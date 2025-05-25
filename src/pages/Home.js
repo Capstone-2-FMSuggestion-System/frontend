@@ -12,7 +12,7 @@ import {
 import MainLayout from "../layouts/MainLayout";
 import ProductCard from "../components/common/ProductCard/ProductCard";
 import { getAllCategories } from "../services/categoryService";
-import { getFeaturedProducts } from "../services/productService";
+import productService from "../services/productService";
 import { Link } from "react-router-dom";
 
 const HeroSection = styled.section`
@@ -285,7 +285,7 @@ const Home = () => {
         setCategoryLoading(true);
 
         // Fetch featured products
-        const productsData = await getFeaturedProducts();
+        const productsData = await productService.getFeaturedProducts();
         console.log("Featured products raw data:", productsData);
 
         // Chuyển đổi dữ liệu nếu cần thiết
@@ -319,7 +319,7 @@ const Home = () => {
         <HeroContent>
           <h1>Bữa ăn ngon cho gia đình bạn</h1>
           <p>Thực phẩm tươi ngon, đảm bảo chất lượng, giao hàng tận nhà</p>
-          <Button to="/products">Đặt hàng ngay</Button>
+          {/* <Button to="/products">Đặt hàng ngay</Button> */}
         </HeroContent>
       </HeroSection>
 
@@ -360,33 +360,37 @@ const Home = () => {
             featuredProducts.map((product) => {
               // Xác định ID sản phẩm
               const productId = product.id || product.product_id;
-              // Xử lý ảnh sản phẩm
-              let productImage = "";
 
-              // Kiểm tra cấu trúc ảnh
-              if (product.image) {
-                // Nếu đã có thuộc tính image
-                productImage = product.image;
-              } else if (
-                Array.isArray(product.images) &&
-                product.images.length > 0
-              ) {
-                if (typeof product.images[0] === "string") {
-                  // Nếu images là mảng các URL
-                  productImage = product.images[0];
-                } else if (product.images[0].image_url) {
-                  // Nếu images là mảng các đối tượng có image_url
-                  productImage = product.images[0].image_url;
+              // Xử lý hình ảnh một cách tốt hơn
+              const getProductImage = () => {
+                // Ưu tiên image trực tiếp
+                if (product.image && typeof product.image === 'string' && product.image.trim() !== '') {
+                  return product.image;
                 }
-              }
 
-              console.log("Product data:", {
-                id: productId,
-                name: product.name,
-                price: product.price || product.discountPrice,
-                original_price: product.original_price || product.originalPrice,
-                image: productImage,
-              });
+                // Kiểm tra mảng images
+                if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+                  const firstImage = product.images[0];
+                  // Nếu là object có image_url
+                  if (typeof firstImage === 'object' && firstImage.image_url && typeof firstImage.image_url === 'string' && firstImage.image_url.trim() !== '') {
+                    return firstImage.image_url;
+                  }
+                  // Nếu là string URL
+                  if (typeof firstImage === 'string' && firstImage.trim() !== '') {
+                    return firstImage;
+                  }
+                }
+
+                // Fallback image
+                return 'https://via.placeholder.com/300x300/f5f5f5/999999?text=Không+có+ảnh';
+              };
+
+              // Xử lý giá cả
+              const displayPrice = product.price || product.discountPrice || 0;
+              const displayOriginalPrice = product.original_price || product.originalPrice || 0;
+
+              // Kiểm tra có giảm giá không
+              const hasDiscount = displayOriginalPrice > displayPrice && displayOriginalPrice > 0;
 
               return (
                 <ProductCard
@@ -394,12 +398,17 @@ const Home = () => {
                   product={{
                     id: productId,
                     name: product.name,
-                    price: Number(product.price || product.discountPrice || 0),
-                    original_price: Number(
-                      product.original_price || product.originalPrice || 0
-                    ),
-                    image: productImage,
+                    price: displayPrice,
+                    discountPrice: hasDiscount ? displayPrice : null,
+                    originalPrice: displayOriginalPrice,
+                    original_price: displayOriginalPrice,
+                    hasDiscount: hasDiscount,
+                    image: getProductImage(),
+                    images: product.images || [],
                     unit: product.unit || "kg",
+                    rating: product.average_rating || 0,
+                    reviewCount: product.review_count || 0,
+                    is_featured: true
                   }}
                 />
               );
@@ -416,7 +425,7 @@ const Home = () => {
           ) : (
             categories.slice(0, 6).map((category) => (
               <CategoryCard
-                to={`/category/${category.category_id}`}
+                to={`/categories/${category.category_id}`}
                 key={category.category_id}
                 onClick={handleCategoryClick}
                 tabIndex={0}

@@ -85,6 +85,7 @@ export const CategoryProvider = ({ children }) => {
 
     try {
       console.log('CategoryContext: Fetching subcategories for', categoryId, forceRefresh ? '(forced)' : '');
+
       const data = await getSubcategories(categoryId);
 
       // Nếu API trả về dữ liệu hợp lệ, lưu vào cache

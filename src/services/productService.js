@@ -60,8 +60,6 @@ const productService = {
 
       const response = await api.get(`/api/e-commerce/categories/${categoryId}/products`, { params: apiParams });
 
-      // console.log('Raw API Response:', response.data);
-
       // Kiểm tra cấu trúc dữ liệu sản phẩm
       if (response.data.products && response.data.products.length > 0) {
         console.log('First Product Sample:', {
