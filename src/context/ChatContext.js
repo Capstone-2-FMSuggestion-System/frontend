@@ -533,6 +533,9 @@ export const ChatProvider = ({ children }) => {
         }
         
         // Xử lý response thành công
+        console.log('🔍 ChatContext API Response:', response);
+        console.log('🔍 Available Products từ API:', response.available_products);
+        
         setMessages(prevMessages => {
           const newMessages = [...prevMessages];
           const botIndex = newMessages.findIndex(msg => msg.id === botMessageId);

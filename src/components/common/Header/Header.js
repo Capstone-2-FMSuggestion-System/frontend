@@ -62,11 +62,6 @@ const SearchContainer = styled.div`
   display: flex;
   flex: 0 1 650px;
   margin: 0 auto;
-<<<<<<< HEAD
-  
-=======
-
->>>>>>> 06f24a8e9a6c963a1f4fade5aebc4cc6296fddea
   @media (max-width: 768px) {
     flex: 1;
     margin: 0 16px;
@@ -224,13 +219,13 @@ const Header = () => {
           <ActionButton to="/cart">
             <FaShoppingCart />
             Giỏ hàng
-<<<<<<< HEAD
+
             {cartItemCount > 0 && (
               <CartBadge>{cartItemCount}</CartBadge>
             )}
-=======
-            {cartItemCount > 0 && <CartBadge>{cartItemCount}</CartBadge>}
->>>>>>> 06f24a8e9a6c963a1f4fade5aebc4cc6296fddea
+
+             {/* {cartItemCount > 0 && <CartBadge>{cartItemCount}</CartBadge>} */}
+
           </ActionButton>
         </ActionItems>
       </TopBar>

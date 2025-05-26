@@ -81,6 +81,7 @@ const ChatBubble = ({ message, isUser, avatar, isError, isAuthError, needNewSess
         </Message>
         
         {/* Hiển thị danh sách sản phẩm có sẵn nếu có */}
+        {console.log('🔍 ChatBubble availableProducts:', availableProducts)}
         {availableProducts && availableProducts.length > 0 && !isUser && (
           <ProductList 
             products={availableProducts}

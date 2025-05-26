@@ -52,22 +52,27 @@ const ProductIcon = styled.span`
 
 const ProductGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 10px;
   
-  @media (max-width: 640px) {
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+  
+  @media (max-width: 480px) {
     grid-template-columns: 1fr;
   }
 `;
 
 const ProductCard = styled.div`
   background: white;
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   border: 1px solid #e9ecef;
   position: relative;
+  max-width: 320px;
   
   &:hover {
     transform: translateY(-2px);
@@ -90,10 +95,10 @@ const AvailableBadge = styled.div`
 
 const ProductImage = styled.img`
   width: 100%;
-  height: 120px;
+  height: 140px;
   object-fit: cover;
-  border-radius: 6px;
-  margin-bottom: 8px;
+  border-radius: 8px;
+  margin-bottom: 10px;
   background-color: #f8f9fa;
 `;
 
@@ -156,18 +161,18 @@ const ProductActions = styled.div`
 
 const AddToCartButton = styled.button`
   flex: 1;
-  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  background: #39c0ed;
   color: white;
   border: none;
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 12px;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   
   &:hover:not(:disabled) {
-    background: linear-gradient(135deg, #218838 0%, #1ea085 100%);
+    background: #2a9dbd;
     transform: translateY(-1px);
   }
   
@@ -223,10 +228,10 @@ const RecommendationText = styled.p`
   color: #495057;
   font-size: 14px;
   margin: 0 0 15px 0;
-  padding: 10px;
-  background: rgba(40, 167, 69, 0.1);
-  border-radius: 6px;
-  border-left: 4px solid #28a745;
+  padding: 12px;
+  background: rgba(57, 192, 237, 0.1);
+  border-radius: 8px;
+  border-left: 4px solid #39c0ed;
 `;
 
 const ProductList = ({ products, onViewDetail }) => {
@@ -285,10 +290,8 @@ const ProductList = ({ products, onViewDetail }) => {
   };
 
   const formatPrice = (price) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
-    }).format(price);
+    if (!price) return '0 ₫';
+    return new Intl.NumberFormat('vi-VN').format(price) + ' ₫';
   };
 
   const calculateDiscount = (originalPrice, currentPrice) => {
@@ -319,13 +322,13 @@ const ProductList = ({ products, onViewDetail }) => {
       <ProductListHeader>
         <ProductListTitleContainer>
           <ProductIcon>🛒</ProductIcon>
-          <ProductListTitle>Sản phẩm có sẵn trong kho</ProductListTitle>
+          <ProductListTitle>Sản phẩm có sẵn</ProductListTitle>
           <ProductCountBadge>{products.length}</ProductCountBadge>
         </ProductListTitleContainer>
       </ProductListHeader>
       
       <RecommendationText>
-        🎯 Những sản phẩm này hiện có sẵn trong kho và có thể được giao hàng ngay. Nhấn vào "Thêm vào giỏ" để đặt mua!
+        Các sản phẩm có thể bạn quan tâm:
       </RecommendationText>
       
       <ProductGrid>
@@ -378,15 +381,15 @@ const ProductList = ({ products, onViewDetail }) => {
                   title={!user ? 'Vui lòng đăng nhập để thêm vào giỏ hàng' : 
                          !isInStock ? 'Sản phẩm tạm hết hàng' : 'Thêm vào giỏ hàng'}
                 >
-                  {!isInStock ? '❌ Hết hàng' : 
-                   !user ? '🔐 Đăng nhập' : '🛒 Thêm vào giỏ'}
+                  {!isInStock ? 'Hết hàng' : 
+                   !user ? 'Đăng nhập' : 'Chọn sản phẩm'}
                 </AddToCartButton>
                 
                 <ViewDetailButton 
                   onClick={() => handleViewDetail(product)}
                   title="Xem chi tiết sản phẩm"
                 >
-                  👁️ Chi tiết
+                  Chi tiết
                 </ViewDetailButton>
               </ProductActions>
             </ProductCard>

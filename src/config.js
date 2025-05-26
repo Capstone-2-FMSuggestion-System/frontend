@@ -12,19 +12,19 @@ export const PAYOS_CONFIG = {
 
 // Company Information
 export const COMPANY_INFO = {
-<<<<<<< HEAD
-    name: 'SM Food Store',
-    slogan: 'Nâng tầm ẩm thực Việt',
-    founded: 2024,
-    address: '123 Đường ABC, Quận XYZ, TP. Hồ Chí Minh',
-    phone: '+84 032 933 0318',
-    email: 'contact@smfoodstore.com',
-    socialMedia: {
-        facebook: 'https://facebook.com/smfoodstore',
-        instagram: 'https://instagram.com/smfoodstore',
-        twitter: 'https://twitter.com/smfoodstore'
-    }
-=======
+// <<<<<<< HEAD
+//     name: 'SM Food Store',
+//     slogan: 'Nâng tầm ẩm thực Việt',
+//     founded: 2024,
+//     address: '123 Đường ABC, Quận XYZ, TP. Hồ Chí Minh',
+//     phone: '+84 032 933 0318',
+//     email: 'contact@smfoodstore.com',
+//     socialMedia: {
+//         facebook: 'https://facebook.com/smfoodstore',
+//         instagram: 'https://instagram.com/smfoodstore',
+//         twitter: 'https://twitter.com/smfoodstore'
+//     }
+// =======
   name: "SM Food Store",
   slogan: "Nâng tầm ẩm thực Việt",
   founded: 2025,
@@ -36,7 +36,6 @@ export const COMPANY_INFO = {
     instagram: "https://instagram.com/smfoodstore",
     twitter: "https://twitter.com/smfoodstore",
   },
->>>>>>> 06f24a8e9a6c963a1f4fade5aebc4cc6296fddea
 };
 
 // Other Configuration
