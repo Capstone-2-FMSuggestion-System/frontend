@@ -137,20 +137,28 @@ const OrderTab = () => {
               })
             );
             // console.log('Orders with details:', ordersWithDetails);
-            setOrders(ordersWithDetails);
+
+            // Sắp xếp theo đơn hàng mới nhất (createdAt giảm dần)
+            const sortedOrders = ordersWithDetails.sort((a, b) => {
+              return new Date(b.createdAt) - new Date(a.createdAt);
+            });
+
+            setOrders(sortedOrders);
+            setTotalPages(Math.ceil(sortedOrders.length / 3)); // 3 đơn hàng mỗi trang
           } catch (error) {
             console.error('Error fetching order details:', error);
             setOrders(response);
+            setTotalPages(Math.ceil(response.length / 3));
           }
-
-          setTotalPages(Math.ceil(response.length / 10));
         } else {
           console.error('Invalid orders data:', response);
           setOrders([]);
+          setTotalPages(1);
         }
       } catch (error) {
         console.error('Failed to fetch orders:', error);
         setOrders([]);
+        setTotalPages(1);
       } finally {
         setLoading(false);
       }
@@ -170,22 +178,42 @@ const OrderTab = () => {
     }
   };
 
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
+  };
+
   const handleStatusFilterChange = (e) => {
     setCurrentPage(1);
     setStatusFilter(e.target.value);
   };
 
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = searchTerm === '' ||
-      (order.orderId && order.orderId.toString().includes(searchTerm)) ||
-      (order.items && order.items.some(item =>
-        item.product_name && item.product_name.toLowerCase().includes(searchTerm.toLowerCase())
-      ));
+  const filteredOrders = (() => {
+    let filtered = orders.filter(order => {
+      const matchesSearch = searchTerm === '' ||
+        (order.orderId && order.orderId.toString().includes(searchTerm)) ||
+        (order.items && order.items.some(item =>
+          item.product_name && item.product_name.toLowerCase().includes(searchTerm.toLowerCase())
+        ));
 
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+      const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
-  });
+      return matchesSearch && matchesStatus;
+    });
+
+    // Tính toán phân trang với 3 đơn hàng mỗi trang
+    const itemsPerPage = 3;
+    const totalFilteredPages = Math.ceil(filtered.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+
+    // Cập nhật totalPages dựa trên kết quả lọc
+    if (totalFilteredPages !== totalPages) {
+      setTotalPages(totalFilteredPages);
+    }
+
+    return filtered.slice(startIndex, endIndex);
+  })();
 
   return (
     <Container>
@@ -201,7 +229,7 @@ const OrderTab = () => {
               placeholder="Tìm kiếm theo mã đơn hàng hoặc sản phẩm"
               onKeyDown={handleSearch}
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
             />
           </SearchInput>
 
@@ -218,6 +246,18 @@ const OrderTab = () => {
             </FilterDropdown>
           </FilterContainer>
         </SearchFilterContainer>
+
+        <div style={{
+          backgroundColor: '#e3f2fd',
+          border: '1px solid #2196f3',
+          borderRadius: '4px',
+          padding: '12px',
+          marginBottom: '20px',
+          fontSize: '14px',
+          color: '#1976d2'
+        }}>
+          <strong>Lưu ý:</strong> Đơn hàng  có vấn đề vui lòng liên hệ hotline <strong>(+84) 032-933-0318</strong> nếu cần hỗ trợ.
+        </div>
 
         <OrderList
           orders={filteredOrders}

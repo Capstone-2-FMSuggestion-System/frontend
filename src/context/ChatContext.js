@@ -1,7 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { createNewChat, sendMessageToChat, getChatContent, checkChatServiceHealth } from '../services/chatService';
+import { createNewChat, sendMessageToChat, getChatContent, checkChatServiceHealth, sendMessageToStreamChat } from '../services/chatService';
 import { useAuth } from './AuthContext';
-import mockProducts from '../mock/products';
 
 // Constants
 const SESSION_ID_KEY = 'chat_conversation_id';
@@ -21,6 +20,8 @@ export const ChatProvider = ({ children }) => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [similarProducts, setSimilarProducts] = useState({});
   const [isNewChat, setIsNewChat] = useState(true);
+  const [hasTriedLoadHistory, setHasTriedLoadHistory] = useState(false);
+  const [historyLoadError, setHistoryLoadError] = useState(null);
   const { user, isAuthenticated } = useAuth();
 
   // Load conversation_id và message_count từ localStorage khi khởi động
@@ -40,11 +41,8 @@ export const ChatProvider = ({ children }) => {
         loadChatHistory(savedConversationId);
       }
     } else {
-      // Chỉ tạo phiên chat mới khi KHÔNG có conversation_id trong localStorage
-      // VÀ là lần đầu tiên mở ứng dụng (không phải refresh)
-      // console.log('Không tìm thấy conversation_id trong localStorage, cần tạo mới trong lần mở chat đầu tiên');
-      // QUAN TRỌNG: KHÔNG tạo conversation mới ở đây, chỉ tạo khi người dùng mở chat
-      // createNewChatSession(true); - LOẠI BỎ DÒNG NÀY
+      // Đánh dấu đã thử load (không có gì để load)
+      setHasTriedLoadHistory(true);
     }
     
     if (savedMessageCount) {
@@ -67,11 +65,15 @@ export const ChatProvider = ({ children }) => {
   const loadChatHistory = async (chatConversationId) => {
     try {
       setIsLoading(true);
+      setHasTriedLoadHistory(true);
+      setHistoryLoadError(null);
+      
       const historyData = await getChatContent(chatConversationId);
       
       // Kiểm tra lỗi xác thực
       if (historyData.authError) {
         console.log('Lỗi xác thực khi tải lịch sử trò chuyện');
+        setHistoryLoadError('auth');
         
         // Hiển thị thông báo lỗi xác thực và gợi ý đăng nhập lại
         const authErrorMessage = {
@@ -94,17 +96,29 @@ export const ChatProvider = ({ children }) => {
       
       if (historyData.error) {
         console.error('Lỗi khi tải lịch sử trò chuyện:', historyData.error);
-        // QUAN TRỌNG: KHÔNG tạo conversation mới khi có lỗi, chỉ xóa loading
+        setHistoryLoadError('network');
+        
+        // Hiển thị tin nhắn lỗi với option tạo phiên mới
+        const errorMessage = {
+          id: Date.now(),
+          text: "Không thể tải lịch sử trò chuyện. Bạn có muốn bắt đầu phiên mới không?",
+          isUser: false,
+          isError: true,
+          needNewSession: true,
+          avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp',
+          isFirstMessage: true
+        };
+        setMessages([errorMessage]);
         setIsLoading(false);
         return;
       }
       
       if (historyData.messages && historyData.messages.length > 0) {
-        // Đảo ngược mảng tin nhắn để tin nhắn cũ nhất ở dưới cùng
-        const reversedMessages = [...historyData.messages].reverse();
+        // Giữ nguyên thứ tự tin nhắn từ API (tin nhắn cũ nhất trước, mới nhất sau)
+        const orderedMessages = [...historyData.messages];
         
         // Chuyển đổi tin nhắn từ API thành định dạng hiển thị
-        const formattedMessages = reversedMessages.flatMap((msg, index) => {
+        const formattedMessages = orderedMessages.flatMap((msg, index) => {
           const messages = [];
           
           // Thêm tin nhắn của người dùng
@@ -125,8 +139,10 @@ export const ChatProvider = ({ children }) => {
             text: msg.role === "assistant" ? msg.content : (msg.ai_response || msg.answer),
             isUser: false,
             avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp',
-            // Đánh dấu tin nhắn chào đầu tiên (bây giờ là tin nhắn cuối sau khi đảo ngược)
-            isFirstMessage: index === reversedMessages.length - 1
+            // Đánh dấu tin nhắn chào đầu tiên (tin nhắn đầu tiên trong danh sách)
+            isFirstMessage: index === 0,
+            // Thêm danh sách sản phẩm có sẵn từ API
+            availableProducts: historyData.available_products || []
           });
           
           return messages;
@@ -138,6 +154,7 @@ export const ChatProvider = ({ children }) => {
         // Đánh dấu không phải phiên mới vì đã có lịch sử
         setIsNewChat(false);
         localStorage.setItem(IS_NEW_CHAT_KEY, 'false');
+        console.log('✅ Đã tải thành công lịch sử trò chuyện:', formattedMessages.length, 'tin nhắn');
       } else {
         // Nếu không có tin nhắn từ API nhưng vẫn có conversation_id hợp lệ
         // Hiển thị tin nhắn chào mừng mà KHÔNG tạo conversation mới
@@ -146,9 +163,11 @@ export const ChatProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Lỗi khi tải lịch sử trò chuyện:', error);
+      setHistoryLoadError('network');
       
       // Kiểm tra lỗi xác thực
       if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+        setHistoryLoadError('auth');
         const authErrorMessage = {
           id: Date.now(),
           text: "Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại để tiếp tục trò chuyện.",
@@ -163,8 +182,17 @@ export const ChatProvider = ({ children }) => {
         localStorage.removeItem(SESSION_ID_KEY);
         setConversationId(null);
       } else {
-        // QUAN TRỌNG: KHÔNG tạo conversation mới khi có lỗi, chỉ hiển thị chào mừng
-        createInitialWelcomeMessage();
+        // Hiển thị lỗi với option tạo phiên mới
+        const errorMessage = {
+          id: Date.now(),
+          text: "Có lỗi khi tải lịch sử trò chuyện. Bạn có muốn bắt đầu phiên mới không?",
+          isUser: false,
+          isError: true,
+          needNewSession: true,
+          avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp',
+          isFirstMessage: true
+        };
+        setMessages([errorMessage]);
       }
     } finally {
       setIsLoading(false);
@@ -181,7 +209,7 @@ export const ChatProvider = ({ children }) => {
       text: "Xin chào! Tôi có thể giúp gì cho bạn hôm nay?",
       isUser: false, 
       avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp',
-      isFirstMessage: true // Đánh dấu là tin nhắn đầu tiên
+      isFirstMessage: true
     };
     
     // Reset messages trước khi thêm tin nhắn chào mừng
@@ -192,16 +220,8 @@ export const ChatProvider = ({ children }) => {
       setUnreadCount(1);
     }
     
-    // Chỉ thêm sản phẩm gợi ý cho tin nhắn chào mừng nếu là phiên chat mới
-    if (isNewChat) {
-      const randomProducts = getRandomProducts(3);
-      setSimilarProducts({
-        [welcomeMessage.id]: randomProducts
-      });
-    } else {
-      // Không thêm sản phẩm nếu không phải phiên chat mới
-      setSimilarProducts({});
-    }
+    // Reset similarProducts
+    setSimilarProducts({});
     
     setIsLoading(false);
   };
@@ -210,95 +230,100 @@ export const ChatProvider = ({ children }) => {
     try {
       setIsLoading(true);
       
-      // Reset unreadCount và messageCount khi tạo cuộc trò chuyện mới
+      // Reset tất cả states
       setUnreadCount(0);
       setMessageCount(0);
-      setIsNewChat(true); // Đánh dấu là phiên chat mới
+      setIsNewChat(true);
+      setHasTriedLoadHistory(true);
+      setHistoryLoadError(null);
       localStorage.setItem(MESSAGE_COUNT_KEY, '0');
       localStorage.setItem(IS_NEW_CHAT_KEY, 'true');
       
-      // Tạo tin nhắn chào mừng mặc định
-      const tempWelcomeMessage = {
-        id: Date.now(),
-        text: "Xin chào! Tôi có thể giúp gì cho bạn hôm nay?",
-        isUser: false, 
-        avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp',
-        isFirstMessage: true // Đánh dấu là tin nhắn đầu tiên
-      };
+      // Xóa conversation_id cũ
+      localStorage.removeItem(SESSION_ID_KEY);
+      setConversationId(null);
       
-      // Reset messages trước khi thêm tin nhắn chào mừng
-      setMessages([tempWelcomeMessage]);
-      
-      // Thêm sản phẩm gợi ý ngẫu nhiên cho tin nhắn chào mừng vì là phiên chat mới
-      const randomProducts = getRandomProducts(3);
-      setSimilarProducts({
-        [tempWelcomeMessage.id]: randomProducts
-      });
+      // Reset messages và similarProducts
+      setMessages([]);
+      setSimilarProducts({});
       
       // Tạo conversation mới từ API
       if (shouldCallApi) {
         try {
-          console.log('Gọi API tạo phiên mới');
+          console.log('🔄 Tạo phiên chat mới...');
           const response = await createNewChat();
           
           // Kiểm tra nếu có lỗi xác thực (401/403)
           if (response.authError) {
             console.log('Lỗi xác thực khi tạo phiên chat mới');
             
-            // Nếu người dùng đã đăng nhập, hiển thị thông báo lỗi khác
-            if (isAuthenticated && user) {
-              const authErrorMessage = {
-                id: tempWelcomeMessage.id,
-                text: "Đã xảy ra lỗi khi kết nối đến dịch vụ chat. Vui lòng thử lại sau.",
-                isUser: false,
-                isError: true,
-                avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp',
-                isFirstMessage: true
-              };
-              
-              setMessages([authErrorMessage]);
-            } else {
-              // Nếu chưa đăng nhập, hiển thị thông báo đăng nhập
-              const authErrorMessage = {
-                id: tempWelcomeMessage.id,
-                text: response.welcome_message || "Bạn không có quyền truy cập vào chức năng này. Vui lòng đăng nhập lại hoặc liên hệ quản trị viên.",
-                isUser: false,
-                isError: true,
-                isAuthError: true,
-                avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp',
-                isFirstMessage: true
-              };
-              
-              setMessages([authErrorMessage]);
-            }
+            const authErrorMessage = {
+              id: Date.now(),
+              text: response.welcome_message || "Lỗi xác thực. Vui lòng đăng nhập lại để tiếp tục sử dụng dịch vụ chat.",
+              isUser: false,
+              isError: true,
+              isAuthError: !isAuthenticated || !user,
+              avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp',
+              isFirstMessage: true
+            };
+            
+            setMessages([authErrorMessage]);
             return;
           }
           
           if (response.conversation_id) {
-            console.log('Nhận conversation_id mới từ API:', response.conversation_id);
-            // Lưu conversation_id mới vào state và localStorage
+            console.log('✅ Nhận conversation_id mới từ API:', response.conversation_id);
             localStorage.setItem(SESSION_ID_KEY, response.conversation_id);
             setConversationId(response.conversation_id);
             
-            // Cập nhật tin nhắn chào mừng nếu API trả về welcome_message
-            if (response.welcome_message) {
-              const welcomeMessage = {
-                id: tempWelcomeMessage.id,
-                text: response.welcome_message,
-                isUser: false,
-                avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp',
-                isFirstMessage: true
-              };
-              setMessages([welcomeMessage]);
-            }
+            // Hiển thị welcome message từ API
+            const welcomeMessage = {
+              id: Date.now(),
+              text: response.welcome_message || "Xin chào! Tôi có thể giúp gì cho bạn hôm nay?",
+              isUser: false,
+              avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp',
+              isFirstMessage: true
+            };
+            setMessages([welcomeMessage]);
           } else {
-            console.log('API không trả về conversation_id, lỗi kết nối');
+            console.log('❌ API không trả về conversation_id, lỗi kết nối');
             console.error('Chi tiết phản hồi từ API:', response);
+            
+            // Hiển thị tin nhắn lỗi
+            const errorMessage = {
+              id: Date.now(),
+              text: "Không thể kết nối đến dịch vụ chat. Vui lòng thử lại sau.",
+              isUser: false,
+              isError: true,
+              avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp',
+              isFirstMessage: true
+            };
+            setMessages([errorMessage]);
           }
         } catch (error) {
           console.error('Lỗi khi gọi API tạo phiên chat mới:', error);
-          // QUAN TRỌNG: Không tạo conversation_id tạm thời nữa, chỉ giữ trạng thái hiện tại
+          
+          // Hiển thị tin nhắn lỗi kết nối
+          const errorMessage = {
+            id: Date.now(),
+            text: "Có lỗi xảy ra khi kết nối đến dịch vụ chat. Vui lòng thử lại sau.",
+            isUser: false,
+            isError: true,
+            avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp',
+            isFirstMessage: true
+          };
+          setMessages([errorMessage]);
         }
+      } else {
+        // Nếu không gọi API, hiển thị tin nhắn chào mừng mặc định
+        const welcomeMessage = {
+          id: Date.now(),
+          text: "Xin chào! Tôi có thể giúp gì cho bạn hôm nay?",
+          isUser: false,
+          avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp',
+          isFirstMessage: true
+        };
+        setMessages([welcomeMessage]);
       }
       
       // Chỉ tăng unreadCount nếu chat box đang đóng
@@ -307,48 +332,46 @@ export const ChatProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Lỗi khi tạo phiên chat mới:', error);
-      // Vẫn tạo tin nhắn chào mừng mặc định khi có lỗi
       createInitialWelcomeMessage();
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Lấy sản phẩm ngẫu nhiên từ mock data (chỉ sử dụng khi không có API)
-  const getRandomProducts = (count = 3) => {
-    const shuffled = [...mockProducts].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, count);
-  };
-
-  // Hiển thị một tin nhắn chào mừng khi mở khung chat và chưa có tin nhắn nào
+  // CẢI THIỆN: Logic mở chat với session management tốt hơn
   useEffect(() => {
     if (isOpen) {
-      // Nếu chat được mở
-      if (messages.length === 0) {
-        // Và không có tin nhắn nào
-        if (!isLoading) {
-          // Và không đang tải
-          const savedConversationId = localStorage.getItem(SESSION_ID_KEY);
-          
-          if (savedConversationId) {
-            // Nếu có conversation_id trong localStorage và chưa được set vào state
-            if (!conversationId) {
-              console.log('Phát hiện conversation_id trong localStorage khi mở chat:', savedConversationId);
-              setConversationId(savedConversationId);
-              loadChatHistory(savedConversationId);
-            }
-          } else {
-            // Nếu không có conversation_id trong localStorage và trong state, TẠO MỚI
-            console.log('Không có conversation_id, tạo phiên mới khi mở chat lần đầu');
-            createNewChatSession(true);
+      // Chỉ xử lý khi chat được mở và chưa có tin nhắn
+      if (messages.length === 0 && !isLoading) {
+        const savedConversationId = localStorage.getItem(SESSION_ID_KEY);
+        
+        if (savedConversationId && !hasTriedLoadHistory) {
+          // Có conversation_id và chưa thử load lịch sử
+          console.log('🔄 Phát hiện conversation_id, đang tải lịch sử:', savedConversationId);
+          if (!conversationId) {
+            setConversationId(savedConversationId);
           }
+          loadChatHistory(savedConversationId);
+        } else if (!savedConversationId && hasTriedLoadHistory) {
+          // Không có conversation_id và đã thử load (hoặc không có gì để load)
+          console.log('🆕 Không có conversation_id, tạo phiên mới');
+          createNewChatSession(true);
+        } else if (historyLoadError && hasTriedLoadHistory) {
+          // Đã có lỗi load lịch sử, không làm gì thêm (để user tự quyết định)
+          console.log('⚠️ Đã có lỗi load lịch sử, chờ user action');
         }
       }
     }
-  }, [isOpen, messages.length, isLoading]);
+  }, [isOpen, messages.length, isLoading, hasTriedLoadHistory, historyLoadError]);
 
   const handleSendMessage = async (text) => {
-    if (!text.trim() && !selectedProduct) return;
+    // Cải thiện validation để tránh empty messages
+    if (!text || !text.trim()) {
+      if (!selectedProduct) {
+        console.log('⚠️ Không có text và không có selectedProduct, bỏ qua');
+        return;
+      }
+    }
 
     // Đảm bảo không vượt quá giới hạn tin nhắn
     if (messageCount >= MAX_MESSAGES_PER_SESSION) {
@@ -365,16 +388,22 @@ export const ChatProvider = ({ children }) => {
       return;
     }
 
-    // Thêm tin nhắn của người dùng vào state
-    const userMessage = {
-      id: Date.now(),
-      text,
-      isUser: true,
-      avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava2-bg.webp'
-    };
+    // Chuẩn bị tin nhắn của người dùng
+    const messageText = text ? text.trim() : '';
+    const updatedMessages = [...messages];
     
-    // Nếu có sản phẩm được chọn, thêm thông tin sản phẩm vào tin nhắn
-    const updatedMessages = [...messages, userMessage];
+    // Chỉ thêm user message nếu có text
+    if (messageText) {
+      const userMessage = {
+        id: Date.now(),
+        text: messageText,
+        isUser: true,
+        avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava2-bg.webp'
+      };
+      updatedMessages.push(userMessage);
+    }
+    
+    // Xử lý selectedProduct riêng biệt
     if (selectedProduct) {
       const productMessage = {
         id: Date.now() + 1,
@@ -385,6 +414,12 @@ export const ChatProvider = ({ children }) => {
       };
       updatedMessages.push(productMessage);
       setSelectedProduct(null);
+    }
+    
+    // Đảm bảo có ít nhất một tin nhắn được thêm
+    if (updatedMessages.length === messages.length) {
+      console.log('⚠️ Không có tin nhắn nào được thêm, bỏ qua');
+      return;
     }
     
     setMessages(updatedMessages);
@@ -418,7 +453,7 @@ export const ChatProvider = ({ children }) => {
           
           // Hiển thị thông báo lỗi
           const errorMessage = {
-            id: Date.now() + 2,
+            id: Date.now() + 10,
             text: "Xin lỗi, đã xảy ra lỗi khi kết nối đến dịch vụ chat. Vui lòng thử lại sau.",
             isUser: false,
             isError: true,
@@ -438,82 +473,131 @@ export const ChatProvider = ({ children }) => {
       setMessageCount(newMessageCount);
       localStorage.setItem(MESSAGE_COUNT_KEY, newMessageCount.toString());
 
-      // Gửi tin nhắn đến API với conversation_id hiện tại
-      const response = await sendMessageToChat(currentConversationId, text);
+      // Tạo tin nhắn bot placeholder để hiển thị streaming - với ID unique hơn
+      const botMessageId = Date.now() + 100;
+      const botMessage = {
+        id: botMessageId,
+        text: '',
+        isUser: false,
+        avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp',
+        isStreaming: true
+      };
       
-      // Kiểm tra nếu có lỗi xác thực (401/403)
-      if (response.authError) {
-        console.log('Lỗi xác thực khi gửi tin nhắn');
-        // Nếu người dùng đã đăng nhập, hiển thị thông báo lỗi khác
-        if (isAuthenticated && user) {
-          const authErrorMessage = {
-            id: Date.now() + 2,
-            text: "Đã xảy ra lỗi khi kết nối đến dịch vụ chat. Vui lòng thử lại sau.",
-            isUser: false,
-            isError: true,
-            avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp'
-          };
-          setMessages([...updatedMessages, authErrorMessage]);
-        } else {
-          // Nếu chưa đăng nhập, hiển thị thông báo đăng nhập
-          const authErrorMessage = {
-            id: Date.now() + 2,
-            text: response.ai_response || "Bạn không có quyền truy cập vào chức năng này. Vui lòng đăng nhập lại hoặc liên hệ quản trị viên.",
-            isUser: false,
-            isError: true,
-            isAuthError: true,
-            avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp'
-          };
-          setMessages([...updatedMessages, authErrorMessage]);
+      let currentMessages = [...updatedMessages, botMessage];
+      setMessages(currentMessages);
+
+      // Gửi tin nhắn đến API - sử dụng API thường để nhận availableProducts
+      // Sử dụng messageText hoặc selectedProduct info
+      const textToSend = messageText || (selectedProduct ? `Sản phẩm: ${selectedProduct.name}` : '');
+      
+      try {
+        const response = await sendMessageToChat(currentConversationId, textToSend);
+        
+        if (response.authError) {
+          // Xử lý lỗi xác thực
+          setMessages(prevMessages => {
+            const newMessages = [...prevMessages];
+            const botIndex = newMessages.findIndex(msg => msg.id === botMessageId);
+            if (botIndex !== -1) {
+              newMessages[botIndex] = {
+                ...newMessages[botIndex],
+                text: "Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại để tiếp tục trò chuyện.",
+                isStreaming: false,
+                isError: true,
+                isAuthError: true,
+                lastUpdated: Date.now()
+              };
+            }
+            return newMessages;
+          });
+          return;
         }
-        return;
-      }
-      
-      // Kiểm tra và xử lý conversation_id từ server
-      if (response.conversation_id) {
-        // Chỉ cập nhật conversation_id nếu khác với conversation_id hiện tại
-        if (response.conversation_id !== currentConversationId) {
+        
+        if (response.isError) {
+          // Xử lý lỗi khác
+          setMessages(prevMessages => {
+            const newMessages = [...prevMessages];
+            const botIndex = newMessages.findIndex(msg => msg.id === botMessageId);
+            if (botIndex !== -1) {
+              newMessages[botIndex] = {
+                ...newMessages[botIndex],
+                text: response.ai_response || "Có lỗi xảy ra khi xử lý tin nhắn.",
+                isStreaming: false,
+                isError: true,
+                lastUpdated: Date.now()
+              };
+            }
+            return newMessages;
+          });
+          return;
+        }
+        
+        // Xử lý response thành công
+        setMessages(prevMessages => {
+          const newMessages = [...prevMessages];
+          const botIndex = newMessages.findIndex(msg => msg.id === botMessageId);
+          if (botIndex !== -1) {
+            newMessages[botIndex] = {
+              ...newMessages[botIndex],
+              text: response.ai_response || "Không nhận được phản hồi",
+              isStreaming: false,
+              availableProducts: response.available_products || [],
+              lastUpdated: Date.now()
+            };
+            
+            // Kiểm tra nếu đã đạt giới hạn số câu hỏi
+            if (newMessageCount >= MAX_MESSAGES_PER_SESSION) {
+              console.log('Đã đạt giới hạn tin nhắn, hiển thị thông báo');
+              newMessages[botIndex].isLimitReached = true;
+              newMessages[botIndex].needNewSession = true;
+            }
+          }
+          return newMessages;
+        });
+
+        // Cập nhật conversation_id nếu cần
+        if (response.conversation_id && response.conversation_id !== currentConversationId) {
           console.log('Cập nhật conversation_id mới từ server:', response.conversation_id);
           setConversationId(response.conversation_id);
           localStorage.setItem(SESSION_ID_KEY, response.conversation_id);
-          // Reset message count khi nhận conversation_id mới từ server
-          setMessageCount(1);
-          localStorage.setItem(MESSAGE_COUNT_KEY, '1');
         }
-      } else {
-        console.log('Server không trả về conversation_id, giữ conversation_id hiện tại:', currentConversationId);
-      }
 
-      // Thêm phản hồi từ chatbot vào state
-      const botMessage = {
-        id: Date.now() + 2,
-        // Sử dụng ai_response từ response cho tương thích với cấu trúc mới
-        text: response.ai_response,
-        isUser: false,
-        avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp',
-        created_at: response.created_at
-      };
-      
-      // Kiểm tra nếu đã đạt giới hạn số câu hỏi
-      if (newMessageCount >= MAX_MESSAGES_PER_SESSION) {
-        console.log('Đã đạt giới hạn tin nhắn, hiển thị thông báo');
-        botMessage.isLimitReached = true;
-        botMessage.needNewSession = true;
-      }
-      
-      const newMessages = [...updatedMessages, botMessage];
-      setMessages(newMessages);
-
-      // Tăng số lượng tin nhắn chưa đọc nếu chat box đang đóng
-      if (!isOpen) {
-        setUnreadCount(prev => prev + 1);
+        // Tăng số lượng tin nhắn chưa đọc nếu chat box đang đóng
+        if (!isOpen) {
+          setUnreadCount(prev => prev + 1);
+        }
+        
+      } catch (error) {
+        console.error('Lỗi khi gửi tin nhắn:', error);
+        
+        setMessages(prevMessages => {
+          const newMessages = [...prevMessages];
+          const botIndex = newMessages.findIndex(msg => msg.id === botMessageId);
+          if (botIndex !== -1) {
+            let errorText = "Xin lỗi, đã xảy ra lỗi khi xử lý tin nhắn của bạn. Vui lòng thử lại sau.";
+            
+            // Kiểm tra loại lỗi để hiển thị thông báo phù hợp
+            if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+              errorText = "Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại để tiếp tục trò chuyện.";
+            }
+            
+            newMessages[botIndex] = {
+              ...newMessages[botIndex],
+              text: errorText,
+              isStreaming: false,
+              isError: true,
+              isAuthError: error.response && (error.response.status === 401 || error.response.status === 403)
+            };
+          }
+          return newMessages;
+        });
       }
     } catch (error) {
       console.error('Lỗi khi gửi tin nhắn:', error);
       
       // Xử lý lỗi và hiển thị thông báo lỗi
       const errorMessage = {
-        id: Date.now() + 2,
+        id: Date.now() + 200,
         text: "Xin lỗi, đã xảy ra lỗi khi xử lý tin nhắn của bạn. Vui lòng thử lại sau.",
         isUser: false,
         isError: true,

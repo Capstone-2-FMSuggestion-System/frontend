@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { FaCheckCircle, FaTimesCircle, FaSpinner, FaShoppingBag, FaArrowLeft } from 'react-icons/fa';
 import payosService from '../../services/payosService';
+import { CartContext } from '../../context/CartContext';
+import orderService from '../../services/orderService';
 
 const Container = styled.div`
   max-width: 600px;
@@ -114,6 +116,7 @@ const PayOSCallback = () => {
     const [orderAmount, setOrderAmount] = useState(0);
     const location = useLocation();
     const navigate = useNavigate();
+    const { clearCartAfterPayment } = useContext(CartContext);
 
     useEffect(() => {
         const handleCallback = async () => {
@@ -149,6 +152,24 @@ const PayOSCallback = () => {
                     if (response && response.status === 'success') {
                         setStatus('success');
                         setMessage('Thanh toán thành công! Đơn hàng của bạn đang được xử lý và sẽ được giao trong thời gian sớm nhất.');
+
+                        // Cập nhật status đơn hàng thành processing
+                        try {
+                            if (response.order_id) {
+                                await orderService.updateOrderStatus(response.order_id, 'processing');
+                                console.log(`Updated order ${response.order_id} status to processing after PayOS payment`);
+                            }
+                        } catch (error) {
+                            console.warn('Failed to update order status after payment:', error);
+                        }
+
+                        // Xóa giỏ hàng sau khi thanh toán thành công
+                        try {
+                            await clearCartAfterPayment();
+                        } catch (error) {
+                            console.warn('Error clearing cart after payment:', error);
+                            // Không hiển thị lỗi cho user vì thanh toán đã thành công
+                        }
                     } else {
                         setStatus('error');
                         setMessage('Đã xảy ra lỗi khi xác nhận thanh toán. Vui lòng liên hệ hỗ trợ.');
@@ -165,7 +186,7 @@ const PayOSCallback = () => {
         };
 
         handleCallback();
-    }, [location]);
+    }, [location, clearCartAfterPayment]);
 
     const handleBackToHome = () => {
         navigate('/');

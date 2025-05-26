@@ -111,7 +111,7 @@ const PaymentSuccess = () => {
   const calculateFinalTotal = () => {
     const subtotal = Number(order.subtotal) || 0;
     const discount = Number(order.discount_amount) || 0;
-    
+
     // Đảm bảo tổng tiền không âm
     return Math.max(0, subtotal - discount);
   };
@@ -120,7 +120,7 @@ const PaymentSuccess = () => {
   const isFullyDiscounted = () => {
     const subtotal = Number(order.subtotal) || 0;
     const discount = Number(order.discount_amount) || 0;
-    
+
     // Kiểm tra nếu giảm giá chiếm ít nhất 99.9% giá trị
     return subtotal > 0 && (discount / subtotal >= 0.999);
   };
@@ -138,7 +138,7 @@ const PaymentSuccess = () => {
         <Title>Cảm ơn bạn đã đặt hàng!</Title>
 
         <Message>
-          Đơn hàng của bạn đã được đặt thành công. Chúng tôi đã gửi email xác nhận với tất cả thông tin chi tiết.
+          Đơn hàng của bạn đã được đặt thành công. Chúng tôi sẽ liên hệ với bạn trong thời gian sớm nhất.
           {isFullyDiscounted() ? ' Đơn hàng của bạn đã được giảm giá 100%.' : ' Chúng tôi sẽ xử lý đơn hàng của bạn trong thời gian sớm nhất.'}
         </Message>
 
@@ -163,17 +163,17 @@ const PaymentSuccess = () => {
             <span>Thành giá:</span>
             <span>{formatCurrency(order.subtotal)}</span>
           </OrderDetail>
-          
+
           <OrderDetail discount={true}>
             <span>Giảm giá:</span>
             <span>-{formatCurrency(order.discount_amount)}</span>
           </OrderDetail>
-          
+
           <OrderDetail total={true} bold={true}>
             <span>Tổng tiền:</span>
             <span>{formatCurrency(finalTotal)}</span>
           </OrderDetail>
-          
+
           {order.coupon_code && (
             <div style={{ marginTop: '10px' }}>
               <span>Mã giảm giá đã dùng:</span>

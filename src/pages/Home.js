@@ -319,7 +319,7 @@ const Home = () => {
         <HeroContent>
           <h1>Bữa ăn ngon cho gia đình bạn</h1>
           <p>Thực phẩm tươi ngon, đảm bảo chất lượng, giao hàng tận nhà</p>
-          {/* <Button to="/products">Đặt hàng ngay</Button> */}
+          <Button to="/products">Đặt hàng ngay</Button>
         </HeroContent>
       </HeroSection>
 

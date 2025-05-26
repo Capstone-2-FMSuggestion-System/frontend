@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { FaArrowLeft, FaBox, FaMapMarkerAlt, FaTruck, FaFileInvoice, FaDownload } from 'react-icons/fa';
+import { FaArrowLeft, FaBox, FaMapMarkerAlt, FaTruck, FaFileInvoice, FaDownload, FaInfoCircle } from 'react-icons/fa';
 import MainLayout from '../../layouts/MainLayout';
 import Button from '../../components/common/Button/Button';
+import ConfirmationModal from '../../components/common/ConfirmationModal/ConfirmationModal';
 import orderService from '../../services/orderService';
 import OrderStatus from '../../components/order-management/OrderStatus/OrderStatus';
 import OrderProductItem from '../../components/order-management/OrderProductItem/OrderProductItem';
 import OrderSummary from '../../components/order-management/OrderSummary/OrderSummary';
+import { useToast } from '../../context/ToastContext';
+import { isPayOSPayment, canCancelOrder, shouldShowContactToCancel, formatPaymentMethod } from '../../utils/orderUtils';
 
 const OrderDetailContainer = styled.div`
   max-width: 1000px;
@@ -202,6 +205,10 @@ const OrderDetail = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const toast = useToast();
 
   useEffect(() => {
     const fetchOrderDetails = async () => {
@@ -209,6 +216,18 @@ const OrderDetail = () => {
         setLoading(true);
         const data = await orderService.getOrderById(id);
         console.log('Order details fetched:', data);
+
+        // Kiểm tra nếu đơn hàng PayOS và status là pending, tự động cập nhật thành processing
+        if (isPayOSPayment(data.payment_method) && data.status === 'pending') {
+          try {
+            await orderService.updateOrderStatus(data.id, 'processing');
+            data.status = 'processing'; // Cập nhật local state
+            console.log(`Updated PayOS order ${data.id} status to processing`);
+          } catch (error) {
+            console.warn('Failed to update order status:', error);
+          }
+        }
+
         setOrder(data);
         setError(null);
       } catch (err) {
@@ -239,29 +258,72 @@ const OrderDetail = () => {
     }
   };
 
-  const formatPaymentMethod = (method) => {
-    if (!method) return 'Chưa cập nhật';
-    const methods = {
-      'cod': 'Thanh toán khi nhận hàng',
-      'bank': 'Chuyển khoản ngân hàng',
-      'momo': 'Ví MoMo',
-      'zalopay': 'Ví ZaloPay',
-      'vnpay': 'VNPay'
-    };
-    return methods[method.toLowerCase()] || method;
+  const handleCancelOrder = async () => {
+    setActionLoading(true);
+    try {
+      await orderService.cancelOrder(id);
+      // Refresh order data
+      const updatedOrder = await orderService.getOrderById(id);
+      setOrder(updatedOrder);
+      setShowCancelModal(false);
+      toast.success({
+        title: 'Thành công',
+        message: 'Đơn hàng đã được hủy thành công!',
+        duration: 4000
+      });
+    } catch (err) {
+      toast.error({
+        title: 'Lỗi',
+        message: err.message || 'Hủy đơn hàng thất bại. Vui lòng thử lại.',
+        duration: 4000
+      });
+      console.error('Error cancelling order:', err);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const handleCancelOrder = async () => {
-    if (window.confirm('Are you sure you want to cancel this order?')) {
-      try {
-        await orderService.cancelOrder(id);
-        // Refresh order data
-        const updatedOrder = await orderService.getOrderById(id);
-        setOrder(updatedOrder);
-      } catch (err) {
-        setError('Failed to cancel order. Please try again.');
-        console.error('Error cancelling order:', err);
-      }
+  const handleConfirmReceived = async () => {
+    setActionLoading(true);
+    try {
+      await orderService.updateOrderStatus(id, 'delivered');
+      // Refresh order data
+      const updatedOrder = await orderService.getOrderById(id);
+      setOrder(updatedOrder);
+      setShowConfirmModal(false);
+      toast.success({
+        title: 'Thành công',
+        message: 'Đã xác nhận nhận hàng thành công!',
+        duration: 4000
+      });
+    } catch (err) {
+      toast.error({
+        title: 'Lỗi',
+        message: err.message || 'Xác nhận nhận hàng thất bại. Vui lòng thử lại.',
+        duration: 4000
+      });
+      console.error('Error confirming order:', err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
+    }).format(price);
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'pending': return 'Chờ xác nhận';
+      case 'processing': return 'Đang xử lý';
+      case 'shipped': return 'Đang giao hàng';
+      case 'delivered': return 'Đã giao hàng';
+      case 'completed': return 'Hoàn thành';
+      case 'cancelled': return 'Đã hủy';
+      default: return status;
     }
   };
 
@@ -281,7 +343,7 @@ const OrderDetail = () => {
         <OrderDetailContainer>
           <ErrorMessage>{error}</ErrorMessage>
           <div style={{ textAlign: 'center', marginTop: '20px' }}>
-            <BackButton to="/orders">
+            <BackButton to="/profile#orders">
               <FaArrowLeft /> Quay lại danh sách đơn hàng
             </BackButton>
           </div>
@@ -296,7 +358,7 @@ const OrderDetail = () => {
         <OrderDetailContainer>
           <ErrorMessage>Không tìm thấy đơn hàng</ErrorMessage>
           <div style={{ textAlign: 'center', marginTop: '20px' }}>
-            <BackButton to="/orders">
+            <BackButton to="/profile#orders">
               <FaArrowLeft /> Quay lại danh sách đơn hàng
             </BackButton>
           </div>
@@ -310,7 +372,7 @@ const OrderDetail = () => {
       <OrderDetailContainer>
         <OrderDetailHeader>
           <h1>Đơn hàng #{order.orderNumber || order.id}</h1>
-          <BackButton to="/orders">
+          <BackButton to="/profile#orders">
             <FaArrowLeft /> Quay lại danh sách đơn hàng
           </BackButton>
         </OrderDetailHeader>
@@ -407,19 +469,42 @@ const OrderDetail = () => {
           </CardBody>
         </CardContainer>
 
+        {shouldShowContactToCancel(order) && (
+          <CardContainer style={{ backgroundColor: '#f8f9fa', border: '1px solid #dee2e6' }}>
+            <CardBody>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#6c757d' }}>
+                <FaInfoCircle />
+                <p style={{ margin: 0, fontSize: '14px' }}>
+                  <strong>Lưu ý:</strong> Đơn hàng thanh toán qua PayOS không thể tự hủy.
+                  Vui lòng liên hệ hotline <strong>(+84) 032-933-0318</strong> để được hỗ trợ hủy đơn hàng.
+                </p>
+              </div>
+            </CardBody>
+          </CardContainer>
+        )}
+
         <ActionButtons>
-          {order.status === 'pending' && (
+          {canCancelOrder(order) && (
             <Button
               variant="danger"
-              onClick={handleCancelOrder}
+              onClick={() => setShowCancelModal(true)}
             >
               Hủy đơn hàng
+            </Button>
+          )}
+          {shouldShowContactToCancel(order) && (
+            <Button
+              variant="secondary"
+              disabled
+              style={{ cursor: 'not-allowed', opacity: 0.6 }}
+            >
+              Liên hệ để hủy đơn hàng
             </Button>
           )}
           {order.status === 'shipped' && (
             <Button
               variant="warning"
-              onClick={() => {/* Confirm received logic */ }}
+              onClick={() => setShowConfirmModal(true)}
             >
               <FaTruck /> Xác nhận đã nhận hàng
             </Button>
@@ -431,6 +516,44 @@ const OrderDetail = () => {
             <FaFileInvoice /> Tải hóa đơn
           </Button>
         </ActionButtons>
+
+        <ConfirmationModal
+          isOpen={showCancelModal}
+          onClose={() => setShowCancelModal(false)}
+          onConfirm={handleCancelOrder}
+          title="Xác nhận hủy đơn hàng"
+          message="Bạn có chắc chắn muốn hủy đơn hàng này? Hành động này không thể hoàn tác."
+          type="danger"
+          confirmText="Hủy đơn hàng"
+          cancelText="Không hủy"
+          confirmVariant="danger"
+          loading={actionLoading}
+          orderDetails={{
+            orderId: order.orderNumber || order.id,
+            createdAt: formatDate(order.createdAt),
+            status: getStatusText(order.status),
+            totalAmount: formatPrice(order.total || 0)
+          }}
+        />
+
+        <ConfirmationModal
+          isOpen={showConfirmModal}
+          onClose={() => setShowConfirmModal(false)}
+          onConfirm={handleConfirmReceived}
+          title="Xác nhận đã nhận hàng"
+          message="Bạn xác nhận đã nhận được hàng và hài lòng với sản phẩm?"
+          type="success"
+          confirmText="Đã nhận hàng"
+          cancelText="Chưa nhận"
+          confirmVariant="success"
+          loading={actionLoading}
+          orderDetails={{
+            orderId: order.orderNumber || order.id,
+            createdAt: formatDate(order.createdAt),
+            status: getStatusText(order.status),
+            totalAmount: formatPrice(order.total || 0)
+          }}
+        />
       </OrderDetailContainer>
     </MainLayout>
   );

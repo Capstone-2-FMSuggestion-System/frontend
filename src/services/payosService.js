@@ -29,7 +29,7 @@ const payosService = {
                 payment_method: 'PAYOS',
                 items: orderData.items,
                 cart_items: orderData.cart_items,
-                status: 'pending',
+                status: 'processing',
                 recipient_name: orderData.recipient_name,
                 recipient_phone: orderData.recipient_phone,
                 shipping_address: orderData.shipping_address,
@@ -87,7 +87,7 @@ const payosService = {
     checkStatus: async (orderCode) => {
         try {
             console.log('Checking PayOS status for order:', orderCode);
-            
+
             // Lấy token xác thực để gọi API
             const token = document.cookie
                 .split('; ')
@@ -97,7 +97,7 @@ const payosService = {
             if (!token) {
                 throw new Error('Không tìm thấy token xác thực. Vui lòng đăng nhập lại.');
             }
-            
+
             // Gọi API với token xác thực để lấy đầy đủ thông tin đơn hàng
             const response = await axios.get(`${API_URL}/api/payments/payos/status/${orderCode}`, {
                 headers: {
@@ -105,7 +105,7 @@ const payosService = {
                     'Content-Type': 'application/json'
                 }
             });
-            
+
             console.log('PayOS status response:', response.data);
             return response.data;
         } catch (error) {

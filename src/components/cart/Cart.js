@@ -88,10 +88,10 @@ const EmptyCart = styled.div`
 `;
 
 const Cart = () => {
-  const { cart, clearCart } = useContext(CartContext);
-  
+  const { cart } = useContext(CartContext);
+
   const isCartEmpty = cart.items.length === 0;
-  
+
   return (
     <MainLayout>
       <CartContainer>
@@ -103,7 +103,7 @@ const Cart = () => {
             <FaArrowLeft /> Tiếp tục mua sắm
           </ContinueShopping>
         </CartHeader>
-        
+
         <CartContent>
           <CartItems>
             {isCartEmpty ? (
@@ -123,7 +123,7 @@ const Cart = () => {
               </>
             )}
           </CartItems>
-          
+
           {!isCartEmpty && (
             <CartSummary />
           )}

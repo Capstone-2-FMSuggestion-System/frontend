@@ -2,6 +2,7 @@ import React, { useEffect, useState, useContext } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CartContext } from '../../context/CartContext';
 import payosService from '../../services/payosService';
+import orderService from '../../services/orderService';
 import styled from 'styled-components';
 
 const LoadingContainer = styled.div`
@@ -36,7 +37,7 @@ const Spinner = styled.div`
 const PaymentCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { clearCart } = useContext(CartContext);
+  const { clearCartAfterPayment } = useContext(CartContext);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -46,7 +47,7 @@ const PaymentCallback = () => {
         // Lấy các tham số từ URL
         const orderCode = searchParams.get('orderCode');
         const status = searchParams.get('status');
-        
+
         console.log('Payment callback received', { orderCode, status });
 
         if (!orderCode) {
@@ -60,17 +61,27 @@ const PaymentCallback = () => {
 
         // Nếu thanh toán thành công
         if (status === 'PAID' || (statusResponse.data && statusResponse.data.status === 'PAID')) {
+          // Cập nhật status đơn hàng thành processing
+          try {
+            if (statusResponse.data && statusResponse.data.order_id) {
+              await orderService.updateOrderStatus(statusResponse.data.order_id, 'processing');
+              console.log(`Updated order ${statusResponse.data.order_id} status to processing after PayOS payment`);
+            }
+          } catch (error) {
+            console.warn('Failed to update order status after payment:', error);
+          }
+
           // Xóa giỏ hàng
-          clearCart();
-          
+          clearCartAfterPayment();
+
           // Lấy thông tin chi tiết về đơn hàng từ API để đảm bảo có thông tin giảm giá
           let orderDetails = statusResponse.data || {};
           const subtotal = Number(orderDetails.subtotal || orderDetails.amount || 0);
           const discountAmount = Number(orderDetails.discount_amount || 0);
-          
+
           // Đảm bảo tổng tiền không âm sau khi giảm giá
           const finalAmount = Math.max(0, subtotal - discountAmount);
-          
+
           // Chuyển đến trang thành công
           navigate('/payment-success', {
             state: {
@@ -87,19 +98,19 @@ const PaymentCallback = () => {
           });
         } else if (status === 'CANCELLED') {
           // Nếu người dùng hủy thanh toán, chuyển về trang giỏ hàng
-          navigate('/cart', { 
-            state: { 
+          navigate('/cart', {
+            state: {
               paymentCancelled: true,
               message: 'Bạn đã hủy thanh toán. Vui lòng thử lại hoặc chọn phương thức thanh toán khác.'
-            } 
+            }
           });
         } else {
           // Các trường hợp khác (PROCESSING, EXPIRED)
-          navigate('/cart', { 
-            state: { 
+          navigate('/cart', {
+            state: {
               paymentFailed: true,
               message: 'Thanh toán không thành công hoặc đã hết hạn. Vui lòng thử lại.'
-            } 
+            }
           });
         }
       } catch (error) {
@@ -111,7 +122,7 @@ const PaymentCallback = () => {
     };
 
     processPayment();
-  }, [searchParams, navigate, clearCart]);
+  }, [searchParams, navigate, clearCartAfterPayment]);
 
   if (error) {
     return (

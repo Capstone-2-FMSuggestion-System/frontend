@@ -13,7 +13,6 @@ import { ToastProvider } from './context/ToastContext';
 import ChatWindow from './components/chat/ChatWindow/ChatWindow';
 import ChatButton from './components/chat/ChatButton/ChatButton';
 import ProductSelector from './components/chat/ProductSelector/ProductSelector';
-
 // Layout Components
 import MainLayout from './layouts/MainLayout';
 import AdminLayout from './layouts/AdminLayout';

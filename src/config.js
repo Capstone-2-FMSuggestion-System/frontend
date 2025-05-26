@@ -15,7 +15,7 @@ export const COMPANY_INFO = {
     slogan: 'Nâng tầm ẩm thực Việt',
     founded: 2024,
     address: '123 Đường ABC, Quận XYZ, TP. Hồ Chí Minh',
-    phone: '+84 123 456 789',
+    phone: '+84 032 933 0318',
     email: 'contact@smfoodstore.com',
     socialMedia: {
         facebook: 'https://facebook.com/smfoodstore',

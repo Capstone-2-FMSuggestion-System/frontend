@@ -6,6 +6,7 @@ import { FaShoppingCart, FaSearch, FaUser, FaPhoneAlt } from "react-icons/fa";
 import { CartContext } from "../../../context/CartContext";
 import { AuthContext } from "../../../context/AuthContext";
 import UserDropdown from "../UserDropdown/UserDropdown";
+import SearchBar from "../SearchBar";
 import logo from "../../../assets/images/logo.png";
 
 const HeaderContainer = styled.header`
@@ -61,42 +62,10 @@ const SearchContainer = styled.div`
   display: flex;
   flex: 0 1 650px;
   margin: 0 auto;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
-`;
-
-const SearchInput = styled.input`
-  width: 100%;
-  padding: 12px 15px;
-  border: 1px solid #ddd;
-  border-radius: 4px 0 0 4px;
-  outline: none;
-  font-size: 14px;
-
-  &:focus {
-    border-color: #4caf50;
-  }
-`;
-
-const SearchButton = styled.button`
-  background: #4caf50;
-  border: 1px solid #4caf50;
-  border-left: none;
-  padding: 0 20px;
-  border-radius: 0 4px 4px 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-
-  &:hover {
-    background: #388e3c;
-  }
-
-  svg {
-    font-size: 18px;
-    color: white;
+  
+  @media (max-width: 768px) {
+    flex: 1;
+    margin: 0 16px;
   }
 `;
 
@@ -207,7 +176,7 @@ const NavLink = styled(Link)`
 const Header = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
-  const { cart } = useContext(CartContext);
+  const { cart, getCartItemCount } = useContext(CartContext);
   const { currentUser, isAuthenticated } = useContext(AuthContext);
 
   const handleSearch = (e) => {
@@ -216,6 +185,8 @@ const Header = () => {
       navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
     }
   };
+
+  const cartItemCount = getCartItemCount();
 
   return (
     <HeaderContainer>
@@ -226,15 +197,12 @@ const Header = () => {
           </Link>
         </Logo>
         <SearchContainer>
-          <SearchInput
-            type="text"
-            placeholder="Search for..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+          <SearchBar
+            placeholder="Tìm kiếm sản phẩm..."
+            onSearch={(query) => {
+              navigate(`/search?q=${encodeURIComponent(query)}`);
+            }}
           />
-          <SearchButton onClick={handleSearch}>
-            <FaSearch />
-          </SearchButton>
         </SearchContainer>
         <ContactInfo>
           <FaPhoneAlt />
@@ -252,8 +220,8 @@ const Header = () => {
           <ActionButton to="/cart">
             <FaShoppingCart />
             Giỏ hàng
-            {cart.items.length > 0 && (
-              <CartBadge>{cart.items.length}</CartBadge>
+            {cartItemCount > 0 && (
+              <CartBadge>{cartItemCount}</CartBadge>
             )}
           </ActionButton>
         </ActionItems>

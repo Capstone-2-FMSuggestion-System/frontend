@@ -6,31 +6,48 @@ const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px;
-  background: #0dcaf0;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
   color: white;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 `;
 
-const Title = styled.p`
+const Title = styled.h3`
   margin: 0;
   font-weight: 600;
+  font-size: 16px;
+  flex: 1;
+  text-align: center;
 `;
 
 const IconsWrapper = styled.div`
   display: flex;
-  gap: 10px;
+  gap: 8px;
 `;
 
 const IconButton = styled.button`
-  background: none;
+  background: rgba(255, 255, 255, 0.1);
   border: none;
   color: white;
   cursor: pointer;
-  padding: 5px;
+  padding: 8px;
   font-size: 16px;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
   
   &:hover {
-    opacity: 0.8;
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+  }
+  
+  &:active {
+    transform: translateY(0);
   }
 `;
 

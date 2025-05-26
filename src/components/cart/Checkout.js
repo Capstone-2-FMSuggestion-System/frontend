@@ -147,7 +147,7 @@ const OrderButton = styled(Button)`
 const Checkout = () => {
   const [selectedPayment, setSelectedPayment] = useState('cod');
   const { currentUser } = useContext(AuthContext);
-  const { cart, clearCart } = useContext(CartContext);
+  const { cart, clearCartSilently } = useContext(CartContext);
   const navigate = useNavigate();
   const location = useLocation();
   const [orderSummary, setOrderSummary] = useState({
@@ -157,21 +157,21 @@ const Checkout = () => {
     coupon_applied: false,
     coupon_code: null
   });
-  
+
   useEffect(() => {
     // Lấy orderSummary từ location state nếu có
     if (location.state && location.state.orderSummary) {
       setOrderSummary(location.state.orderSummary);
     }
   }, [location.state]);
-  
+
   useEffect(() => {
     // Redirect to cart if cart is empty
     if (cart.items.length === 0) {
       navigate('/cart');
     }
   }, [cart.items.length, navigate]);
-  
+
   const initialValues = {
     firstName: currentUser?.firstName || '',
     lastName: currentUser?.lastName || '',
@@ -187,7 +187,7 @@ const Checkout = () => {
     cardCvv: '',
     notes: ''
   };
-  
+
   const validationSchema = Yup.object({
     firstName: Yup.string().required('First name is required'),
     lastName: Yup.string().required('Last name is required'),
@@ -214,16 +214,17 @@ const Checkout = () => {
       then: () => Yup.string().required('CVV is required')
     })
   });
-  
+
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
       const fullName = `${values.firstName} ${values.lastName}`.trim();
-      
+
       // Prepare order data
       const orderData = {
         user_id: currentUser.user_id,
         total_amount: orderSummary.total,
         payment_method: values.paymentMethod,
+        status: values.paymentMethod === 'payos' ? 'processing' : 'pending',
         recipient_name: fullName,
         recipient_phone: values.phone,
         shipping_address: values.address,
@@ -236,13 +237,13 @@ const Checkout = () => {
           price: item.price
         }))
       };
-      
+
       console.log('Order data being sent:', orderData);
       console.log('Order summary with coupon:', orderSummary);
-      
+
       // Gọi API tạo đơn hàng
       let order;
-      
+
       if (selectedPayment === 'payos') {
         // Gọi API thanh toán qua PayOS
         order = await orderService.createPayosOrder(orderData);
@@ -250,7 +251,7 @@ const Checkout = () => {
         // Gọi API thanh toán COD
         order = await orderService.createOrder(orderData);
       }
-      
+
       // Nếu đã áp dụng mã giảm giá, lưu vào đơn hàng
       if (orderSummary.coupon_applied && orderSummary.coupon_code) {
         try {
@@ -261,10 +262,10 @@ const Checkout = () => {
           console.error('Error applying coupon to order:', couponError);
         }
       }
-      
+
       // Clear cart
-      clearCart();
-      
+      clearCartSilently();
+
       // Redirect to success page hoặc trang thanh toán
       if (selectedPayment === 'payos' && order && order.payment_url) {
         window.location.href = order.payment_url;
@@ -277,16 +278,16 @@ const Checkout = () => {
       setSubmitting(false);
     }
   };
-  
+
   const handleCartSummaryUpdate = (updatedSummary) => {
     setOrderSummary(updatedSummary);
   };
-  
+
   return (
     <MainLayout>
       <CheckoutContainer>
         <CheckoutTitle>Checkout</CheckoutTitle>
-        
+
         <CheckoutContent>
           <CheckoutForm>
             <Formik
@@ -297,7 +298,7 @@ const Checkout = () => {
               {({ values, errors, touched, handleChange, handleBlur, isSubmitting }) => (
                 <Form>
                   <SectionTitle>Thông tin giao hàng</SectionTitle>
-                  
+
                   <FormRow cols={2}>
                     <FormGroup>
                       <Label htmlFor="firstName">Tên</Label>
@@ -309,7 +310,7 @@ const Checkout = () => {
                       />
                       <ErrorMessage name="firstName" component={ErrorText} />
                     </FormGroup>
-                    
+
                     <FormGroup>
                       <Label htmlFor="lastName">Họ</Label>
                       <Input
@@ -321,7 +322,7 @@ const Checkout = () => {
                       <ErrorMessage name="lastName" component={ErrorText} />
                     </FormGroup>
                   </FormRow>
-                  
+
                   <FormRow cols={2}>
                     <FormGroup>
                       <Label htmlFor="email">Email</Label>
@@ -333,7 +334,7 @@ const Checkout = () => {
                       />
                       <ErrorMessage name="email" component={ErrorText} />
                     </FormGroup>
-                    
+
                     <FormGroup>
                       <Label htmlFor="phone">Số điện thoại</Label>
                       <Input
@@ -345,7 +346,7 @@ const Checkout = () => {
                       <ErrorMessage name="phone" component={ErrorText} />
                     </FormGroup>
                   </FormRow>
-                  
+
                   <FormGroup>
                     <Label htmlFor="address">Địa chỉ</Label>
                     <Input
@@ -356,7 +357,7 @@ const Checkout = () => {
                     />
                     <ErrorMessage name="address" component={ErrorText} />
                   </FormGroup>
-                  
+
                   <FormRow cols={2}>
                     <FormGroup>
                       <Label htmlFor="city">Thành phố</Label>
@@ -368,7 +369,7 @@ const Checkout = () => {
                       />
                       <ErrorMessage name="city" component={ErrorText} />
                     </FormGroup>
-                    
+
                     <FormGroup>
                       <Label htmlFor="zipCode">Mã bưu điện</Label>
                       <Input
@@ -380,7 +381,7 @@ const Checkout = () => {
                       <ErrorMessage name="zipCode" component={ErrorText} />
                     </FormGroup>
                   </FormRow>
-                  
+
                   <FormGroup>
                     <Label htmlFor="notes">Ghi chú</Label>
                     <TextArea
@@ -390,9 +391,9 @@ const Checkout = () => {
                       placeholder="Ghi chú thêm về đơn hàng"
                     />
                   </FormGroup>
-                  
+
                   <SectionTitle>Phương thức thanh toán</SectionTitle>
-                  
+
                   <RadioGroup>
                     <RadioOption>
                       <Field
@@ -408,7 +409,7 @@ const Checkout = () => {
                       />
                       Thanh toán khi nhận hàng (COD)
                     </RadioOption>
-                    
+
                     <RadioOption>
                       <Field
                         type="radio"
@@ -424,7 +425,7 @@ const Checkout = () => {
                       Thanh toán trực tuyến (PayOS)
                     </RadioOption>
                   </RadioGroup>
-                  
+
                   <OrderButton
                     primary
                     type="submit"
@@ -436,7 +437,7 @@ const Checkout = () => {
               )}
             </Formik>
           </CheckoutForm>
-          
+
           <div>
             <CartSummary onCheckout={handleCartSummaryUpdate} />
           </div>

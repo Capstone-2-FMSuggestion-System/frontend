@@ -230,36 +230,51 @@ const ProductCard = ({ product }) => {
     addToCart(product, 1);
   };
 
-  // Hiển thị log cho debug
-  console.log("ProductCard rendering for:", product.name, "with ID:", product.id);
-  console.log("Image data:", { image: product.image, images: product.images });
-
   // Xác định giá hiển thị với kiểm tra null
-  const currentPrice = product?.price || 0;
-  const originalPrice = product?.original_price || 0;
+  const currentPrice = product?.discountPrice || product?.price || 0;
+  const originalPrice = product?.originalPrice || product?.original_price || 0;
   const discountPercentage = originalPrice > currentPrice && originalPrice > 0
     ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
     : 0;
 
-  // Lấy ảnh chính
-  const productImage = product?.image || (product?.images && product.images.length > 0 ? product.images[0].image_url : 'https://via.placeholder.com/300x300?text=No+Image');
+  // Xử lý hình ảnh một cách tốt hơn
+  const getProductImage = () => {
+    // Ưu tiên image trực tiếp
+    if (product?.image && typeof product.image === 'string' && product.image.trim() !== '') {
+      return product.image;
+    }
+
+    // Kiểm tra mảng images
+    if (product?.images && Array.isArray(product.images) && product.images.length > 0) {
+      const firstImage = product.images[0];
+      // Nếu là object có image_url
+      if (typeof firstImage === 'object' && firstImage.image_url && typeof firstImage.image_url === 'string' && firstImage.image_url.trim() !== '') {
+        return firstImage.image_url;
+      }
+      // Nếu là string URL
+      if (typeof firstImage === 'string' && firstImage.trim() !== '') {
+        return firstImage;
+      }
+    }
+
+    // Fallback image
+    return 'https://via.placeholder.com/300x300/f5f5f5/999999?text=Không+có+ảnh';
+  };
+
+  const productImage = getProductImage();
 
   return (
     <Card isFeatured={product?.is_featured}>
       <ImageContainer isFeatured={product?.is_featured}>
         <Link to={`/products/${product?.id}`}>
-          {productImage ? (
-            <img
-              src={productImage}
-              alt={product?.name || 'Sản phẩm'}
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = 'https://via.placeholder.com/300x300?text=Error+Loading';
-              }}
-            />
-          ) : (
-            <div className="no-image">Không có hình ảnh</div>
-          )}
+          <img
+            src={productImage}
+            alt={product?.name || 'Sản phẩm'}
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = 'https://via.placeholder.com/300x300?text=Error+Loading';
+            }}
+          />
         </Link>
         {product?.is_featured && (
           <>

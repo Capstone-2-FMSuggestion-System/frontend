@@ -105,8 +105,11 @@ const MessagesContainer = ({ messages, isLoading, similarProducts }) => {
                 isUser={msg.isUser}
                 avatar={msg.avatar}
                 isError={msg.isError}
+                isAuthError={msg.isAuthError}
                 needNewSession={msg.needNewSession}
                 processingTime={msg.processingTime}
+                isStreaming={msg.isStreaming}
+                availableProducts={msg.availableProducts}
               />
             )}
             
@@ -125,20 +128,7 @@ const MessagesContainer = ({ messages, isLoading, similarProducts }) => {
         </EmptyStateMessage>
       )}
       
-      {isLoading && (
-        <TypingIndicator onClick={handleAllEvents}>
-          <TypingAvatar 
-            src='https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp'
-            alt="Bot Avatar" 
-            onClick={handleAllEvents}
-          />
-          <TypingDots onClick={handleAllEvents}>
-            <Dot delay={0} />
-            <Dot delay={0.2} />
-            <Dot delay={0.4} />
-          </TypingDots>
-        </TypingIndicator>
-      )}
+      {/* Typing indicator đã được chuyển vào ChatBubble với isStreaming */}
       
       <div ref={messagesEndRef} />
     </Container>

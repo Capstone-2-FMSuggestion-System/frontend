@@ -1,11 +1,19 @@
 import React from 'react';
 import { useChat } from '../../../context/ChatContext';
 import { useAuth } from '../../../context/AuthContext';
-import { MessageContainer, Avatar, Message, NewSessionButton, ProcessingTime, MessageWrapper } from './ChatBubble.styles';
+import MarkdownRenderer from '../MarkdownRenderer/MarkdownRenderer';
+import ProductList from '../ProductList/ProductList';
+import { MessageContainer, Avatar, Message, NewSessionButton, ProcessingTime, MessageWrapper, TypingIndicator, TypingDot } from './ChatBubble.styles';
 
-const ChatBubble = ({ message, isUser, avatar, isError, isAuthError, needNewSession, processingTime }) => {
+const ChatBubble = ({ message, isUser, avatar, isError, isAuthError, needNewSession, processingTime, isStreaming, availableProducts }) => {
   const { createNewChatSession } = useChat();
   const { logout } = useAuth();
+  
+  // Validation: Không render nếu message trống và không phải streaming
+  if (!isStreaming && !message && !isError && !needNewSession && !isAuthError) {
+    console.log('⚠️ ChatBubble: Message trống, không render');
+    return null;
+  }
   
   const handleClick = (e) => {
     if (e) {
@@ -28,8 +36,8 @@ const ChatBubble = ({ message, isUser, avatar, isError, isAuthError, needNewSess
   const handleNewSessionClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    // Xóa session_id khỏi localStorage
-    localStorage.removeItem('chat_session_id');
+    // Xóa session_id khỏi localStorage (sử dụng đúng key)
+    localStorage.removeItem('chat_conversation_id');
     createNewChatSession();
   };
   
@@ -57,8 +65,31 @@ const ChatBubble = ({ message, isUser, avatar, isError, isAuthError, needNewSess
           onClick={handleClick}
           onMouseDown={handleClick}
         >
-          {message}
+          {isStreaming && !isUser && !message ? (
+            <TypingIndicator>
+              <TypingDot delay={0} />
+              <TypingDot delay={0.2} />
+              <TypingDot delay={0.4} />
+            </TypingIndicator>
+          ) : (
+            !isUser && message ? (
+              <MarkdownRenderer content={message} />
+            ) : (
+              message
+            )
+          )}
         </Message>
+        
+        {/* Hiển thị danh sách sản phẩm có sẵn nếu có */}
+        {availableProducts && availableProducts.length > 0 && !isUser && (
+          <ProductList 
+            products={availableProducts}
+            onViewDetail={(product) => {
+              // Mở trang chi tiết sản phẩm trong tab mới
+              window.open(`/products/${product.id}`, '_blank');
+            }}
+          />
+        )}
         
         {processingTime && !isUser && (
           <ProcessingTime isUser={isUser}>

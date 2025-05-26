@@ -4,76 +4,97 @@ import { FaPaperPlane, FaPaperclip } from 'react-icons/fa';
 import { useChat } from '../../../context/ChatContext';
 
 const InputContainer = styled.div`
-  padding: 15px;
-  border-top: 1px solid #eee;
+  padding: 16px;
+  border-top: 1px solid #e9ecef;
+  background: white;
+  flex-shrink: 0;
 `;
 
 const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 `;
 
 const InputWrapper = styled.div`
   display: flex;
-  gap: 10px;
+  gap: 12px;
+  align-items: flex-end;
 `;
 
 const TextArea = styled.textarea`
   flex: 1;
-  padding: 10px;
+  padding: 12px;
   border: 1px solid #ddd;
-  border-radius: 8px;
+  border-radius: 12px;
   resize: none;
   outline: none;
+  font-size: 14px;
+  line-height: 1.4;
+  min-height: 44px;
+  max-height: 120px;
+  font-family: inherit;
   
   &:focus {
-    border-color: #0dcaf0;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  }
+  
+  &::placeholder {
+    color: #6c757d;
   }
 `;
 
 const ButtonsWrapper = styled.div`
   display: flex;
-  gap: 10px;
+  gap: 8px;
 `;
 
 const ActionButton = styled.button`
-  background: ${props => props.primary ? '#0dcaf0' : '#f8f9fa'};
-  color: ${props => props.primary ? 'white' : '#0dcaf0'};
-  border: ${props => props.primary ? 'none' : '1px solid #0dcaf0'};
-  border-radius: 8px;
-  padding: 0 15px;
+  background: ${props => props.primary ? '#007bff' : '#f8f9fa'};
+  color: ${props => props.primary ? 'white' : '#007bff'};
+  border: ${props => props.primary ? 'none' : '1px solid #007bff'};
+  border-radius: 12px;
+  padding: 0 16px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 40px;
+  height: 44px;
+  min-width: 44px;
+  transition: all 0.2s ease;
   
   &:hover {
-    background: ${props => props.primary ? '#0bb5d8' : '#e9ecef'};
+    background: ${props => props.primary ? '#0056b3' : '#e9ecef'};
+    transform: translateY(-1px);
+  }
+  
+  &:active {
+    transform: translateY(0);
   }
 `;
 
 const SelectedProductContainer = styled.div`
   background: #f8f9fa;
-  border-radius: 8px;
-  padding: 8px;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 12px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 12px;
 `;
 
 const ProductImage = styled.img`
-  width: 30px;
-  height: 30px;
-  border-radius: 4px;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
   object-fit: cover;
 `;
 
 const ProductName = styled.span`
-  font-size: 12px;
+  font-size: 14px;
   flex: 1;
+  color: #333;
 `;
 
 const RemoveButton = styled.button`
@@ -81,10 +102,17 @@ const RemoveButton = styled.button`
   border: none;
   color: #6c757d;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 16px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   
   &:hover {
     color: #dc3545;
+    background: rgba(220, 53, 69, 0.1);
   }
 `;
 
@@ -155,13 +183,13 @@ const ChatInput = ({ onSend }) => {
           />
           
           <ButtonsWrapper onClick={(e) => e.stopPropagation()}>
-            <ActionButton 
+            {/* <ActionButton 
               type="button" 
               onClick={handleOpenProductSelector}
               title="Đính kèm sản phẩm"
             >
               <FaPaperclip />
-            </ActionButton>
+            </ActionButton> */}
             <ActionButton type="submit" primary title="Gửi" onClick={(e) => e.stopPropagation()}>
               <FaPaperPlane />
             </ActionButton>

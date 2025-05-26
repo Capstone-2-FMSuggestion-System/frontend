@@ -1,10 +1,14 @@
 import styled from 'styled-components';
 
 export const Container = styled.div`
-  height: 450px;
-  padding: 8px 12px;
+  flex: 1;
+  padding: 12px 16px;
   overflow-y: auto;
   scroll-behavior: smooth;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
 `;
 
 export const LoadingContainer = styled.div`
@@ -15,28 +19,30 @@ export const LoadingContainer = styled.div`
 export const TypingIndicator = styled.div`
   display: flex;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  gap: 8px;
 `;
 
 export const TypingAvatar = styled.img`
-  width: 35px;
-  height: 35px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  margin-right: 8px;
+  flex-shrink: 0;
 `;
 
 export const TypingDots = styled.div`
   display: flex;
   align-items: center;
-  background-color: rgba(57, 192, 237, 0.2);
-  padding: 10px 14px;
-  border-radius: 15px;
+  background-color: rgba(57, 192, 237, 0.1);
+  padding: 12px 16px;
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 `;
 
 export const Dot = styled.div`
-  width: 7px;
-  height: 7px;
-  background-color: #555;
+  width: 6px;
+  height: 6px;
+  background-color: #6c757d;
   border-radius: 50%;
   margin: 0 2px;
   opacity: 0.6;
@@ -46,9 +52,11 @@ export const Dot = styled.div`
   @keyframes typing {
     0%, 60%, 100% {
       transform: translateY(0);
+      opacity: 0.4;
     }
     30% {
-      transform: translateY(-7px);
+      transform: translateY(-8px);
+      opacity: 1;
     }
   }
 `;
@@ -62,4 +70,5 @@ export const EmptyStateMessage = styled.div`
   font-size: 14px;
   text-align: center;
   padding: 20px;
+  line-height: 1.5;
 `; 

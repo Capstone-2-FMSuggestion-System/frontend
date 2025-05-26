@@ -157,7 +157,9 @@ export const sendMessageToChat = async (conversationId, userMessage) => {
       user_message: userMessageObj,
       // Lưu toàn bộ assistant_message dictionary đã chuẩn hóa
       assistant_message: assistantMessageObj,
-      created_at: response.data.created_at
+      created_at: response.data.created_at,
+      // Thêm thông tin sản phẩm có sẵn
+      available_products: response.data.available_products || []
     };
   } catch (error) {
     console.error('Lỗi khi gửi tin nhắn tới @base_chat:', error);
@@ -185,15 +187,31 @@ export const getChatContent = async (conversationId) => {
     if (!conversationId) {
       return { messages: [], error: 'Không có conversation_id để tải lịch sử' };
     }
-    // Đổi 'chat_id' thành 'conversation_id' trong params
+    
+    // Thử endpoint test trước (không cần authentication)
+    try {
+      const testResponse = await chatApi.get(`/test-chatContent`, { params: { conversation_id: conversationId } });
+      if (testResponse.data && !testResponse.data.error) {
+        return {
+          messages: testResponse.data.messages || [],
+          conversation_id: testResponse.data.conversation_id || conversationId,
+          user_id: testResponse.data.user_id,
+          created_at: testResponse.data.created_at,
+          available_products: testResponse.data.available_products || [],
+        };
+      }
+    } catch (testError) {
+      console.log('Test endpoint không khả dụng, thử endpoint chính:', testError.message);
+    }
+    
+    // Fallback về endpoint chính (cần authentication)
     const response = await chatApi.get(`/chatContent`, { params: { conversation_id: conversationId } });
-    // response.data should match ChatContentResponse
     return {
       messages: response.data.messages || [],
       conversation_id: response.data.conversation_id || conversationId,
       user_id: response.data.user_id,
-      created_at: response.data.created_at, // created_at của cuộc trò chuyện
-      // question_count: response.data.question_count || 0, // Không có trong ChatContentResponse
+      created_at: response.data.created_at,
+      available_products: response.data.available_products || [],
     };
   } catch (error) {
     console.error('Lỗi khi lấy lịch sử trò chuyện từ @base_chat:', error);
@@ -280,10 +298,115 @@ export const getSimilarProducts = async (question, limit = 3) => {
 };
 */
 
+// Gửi tin nhắn với streaming response - Kết nối với /api/stream-chat của @base_chat
+// API Doc: POST /api/stream-chat -> Request: ChatRequest { message: string, conversation_id: Optional[int] }
+// API Doc: Response: StreamingResponse với Server-Sent Events
+export const sendMessageToStreamChat = async (conversationId, userMessage, onChunk, onComplete, onError) => {
+  try {
+    if (!conversationId) {
+      console.error("sendMessageToStreamChat: conversationId is required.");
+      onError("Lỗi: Không có ID cuộc trò chuyện. Vui lòng bắt đầu cuộc trò chuyện mới.");
+      return;
+    }
+
+    const payload = {
+      conversation_id: conversationId,
+      message: userMessage
+    };
+
+    const token = Cookies.get(TOKEN_STORAGE.ACCESS_TOKEN);
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'text/event-stream',
+      'Cache-Control': 'no-cache'
+    };
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${BASE_CHAT_API_URL}/stream-chat`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        onError("Lỗi xác thực hoặc không có quyền gửi tin nhắn. Vui lòng đăng nhập lại.");
+        return;
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullResponse = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            
+            if (data === '[DONE]') {
+              onComplete(fullResponse, conversationId);
+              return;
+            }
+
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.info) {
+                console.log('Stream info:', parsed.info);
+                continue;
+              }
+              if (parsed.replace) {
+                const replacedText = JSON.parse(parsed.replace);
+                fullResponse = replacedText;
+                onChunk(replacedText, true); // true indicates replacement
+                continue;
+              }
+            } catch (e) {
+              // Không phải JSON, xử lý như text thông thường
+            }
+
+            if (data.trim()) {
+              fullResponse += data;
+              onChunk(data, false);
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    onComplete(fullResponse, conversationId);
+
+  } catch (error) {
+    console.error('Lỗi khi gửi tin nhắn streaming tới @base_chat:', error);
+    if (error.name === 'AbortError') {
+      onError("Yêu cầu đã bị hủy.");
+    } else {
+      onError("Có lỗi xảy ra khi gửi tin nhắn. Vui lòng thử lại.");
+    }
+  }
+};
+
 export default {
   createNewChat,
   sendMessageToChat,
   getChatContent,
   checkChatServiceHealth, // Đổi tên hàm trong export
   // getSimilarProducts, // Giữ ở dạng bình luận
+  sendMessageToStreamChat,
 };

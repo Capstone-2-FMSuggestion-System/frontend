@@ -23,10 +23,13 @@ const Container = styled.div`
   position: fixed;
   bottom: 30px;
   right: 30px;
-  width: 450px; /* Mở rộng từ 350px lên 450px */
+  width: 480px;
+  max-width: calc(100vw - 60px);
+  height: 600px;
+  max-height: calc(100vh - 60px);
   z-index: 1000;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
-  border-radius: 15px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  border-radius: 16px;
   background: white;
   overflow: hidden;
   opacity: ${props => props.isOpen ? 1 : 0};
@@ -34,7 +37,16 @@ const Container = styled.div`
   transition: all 0.3s ease-in-out;
   pointer-events: ${props => props.isOpen ? 'all' : 'none'};
   visibility: ${props => props.isOpen ? 'visible' : 'hidden'};
-  display: ${props => props.isOpen ? 'block' : 'none'};
+  display: ${props => props.isOpen ? 'flex' : 'none'};
+  flex-direction: column;
+  
+  @media (max-width: 768px) {
+    width: calc(100vw - 20px);
+    height: calc(100vh - 20px);
+    bottom: 10px;
+    right: 10px;
+    border-radius: 12px;
+  }
 `;
 
 // Constants from ChatContext

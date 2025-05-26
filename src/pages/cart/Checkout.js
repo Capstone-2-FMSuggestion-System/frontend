@@ -199,7 +199,7 @@ const InfoMessage = styled.div`
 const Checkout = () => {
   const [selectedPayment, setSelectedPayment] = useState('cod');
   const { currentUser } = useContext(AuthContext);
-  const { cart, clearCart } = useContext(CartContext);
+  const { cart, clearCartSilently } = useContext(CartContext);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -267,10 +267,10 @@ const Checkout = () => {
       const subtotal = Number(parseFloat(cart.totalAmount).toFixed(2)) || 0;
       const discount = Number(parseFloat(cart.discount).toFixed(2)) || 0;
       const finalTotalItemsPrice = Number(parseFloat(cart.discountedTotal).toFixed(2)) || subtotal;
-      
+
       // Tính phần trăm giảm giá thực tế
       const discountPercentage = subtotal > 0 ? (discount / subtotal) * 100 : 0;
-      
+
       // Phí vận chuyển đã được loại bỏ, nên không cần tính toán hay cộng vào total nữa.
       const totalForOrder = finalTotalItemsPrice;
 
@@ -296,7 +296,7 @@ const Checkout = () => {
         total_amount: totalForOrder,
         payment_method: values.paymentMethod === 'cod' ? 'COD' : 'PayOS',
         items: cartItems,
-        status: 'pending',
+        status: values.paymentMethod === 'payos' ? 'processing' : 'pending', // PayOS -> processing, COD -> pending
         recipient_name: `${values.firstName} ${values.lastName}`,
         recipient_phone: values.phone,
         shipping_address: values.address,
@@ -319,7 +319,7 @@ const Checkout = () => {
         console.log('COD order created:', order);
 
         // Xóa giỏ hàng
-        clearCart();
+        clearCartSilently();
 
         // Chuyển đến trang thành công
         navigate('/payment-success', {
@@ -374,14 +374,14 @@ const Checkout = () => {
             const subtotal = Number(parseFloat(cart.totalAmount).toFixed(2)) || 0;
             const discount = Number(parseFloat(cart.discount).toFixed(2)) || 0;
             const finalTotalPrice = Number(parseFloat(cart.discountedTotal).toFixed(2)) || subtotal;
-            
+
             // Tính phần trăm giảm giá thực tế
             const discountPercentage = subtotal > 0 ? (discount / subtotal) * 100 : 0;
-            
+
             // Chỉ coi là giảm 100% khi thực sự giảm gần như toàn bộ giá trị (>=99.9%) VÀ có mã giảm giá được áp dụng
             const hasCouponApplied = cart.couponCode && cart.couponCode.length > 0;
             const isFullyDiscounted = (discountPercentage >= 99.9 || finalTotalPrice === 0) && hasCouponApplied;
-            
+
             console.log('Checkout info:', {
               subtotal,
               discount,
@@ -390,7 +390,7 @@ const Checkout = () => {
               isFullyDiscounted,
               hasCouponApplied
             });
-            
+
             // Nếu tổng tiền là 0 và phương thức thanh toán hiện tại là PayOS, tự động chuyển về COD
             if (isFullyDiscounted && values.paymentMethod === 'payos') {
               // Sử dụng setTimeout để tránh warning "Cannot update a component while rendering a different component"
@@ -399,7 +399,7 @@ const Checkout = () => {
                 setSelectedPayment('cod');
               }, 0);
             }
-            
+
             return (
               <Form>
                 <CheckoutContent>
@@ -458,7 +458,7 @@ const Checkout = () => {
 
                     <InfoMessage>
                       <FaInfoCircle />
-                      <p>{isFullyDiscounted 
+                      <p>{isFullyDiscounted
                         ? 'Đơn hàng đã được giảm 100% giá trị. Phương thức thanh toán khi nhận hàng được tự động chọn.'
                         : 'Vui lòng chọn một trong hai phương thức thanh toán dưới đây để hoàn tất đơn hàng.'}</p>
                     </InfoMessage>
@@ -485,9 +485,9 @@ const Checkout = () => {
                           </PaymentInfo>
                         </RadioOption>
 
-                        <RadioOption 
+                        <RadioOption
                           selected={values.paymentMethod === 'payos'}
-                          style={{ 
+                          style={{
                             opacity: isFullyDiscounted ? 0.5 : 1,
                             cursor: isFullyDiscounted ? 'not-allowed' : 'pointer',
                             position: 'relative'
