@@ -136,8 +136,9 @@ const Footer = () => {
         <LogoSection>
           <img src={logo} alt="SM Food Store" />
           <p>
-            Lorem ipsum dolor sit amet consectetur. Maecenada duis lorem mi
-            mattis.
+            Đại Học Duy Tân là nơi cung cấp các sản phẩm thực phẩm chất lượng
+            cao, phục vụ nhu cầu ăn uống của sinh viên và cộng đồng. Chúng tôi
+            cam kết mang đến sự hài lòng và an toàn cho khách hàng.
           </p>
           <PaymentMethods>
             <FaCcVisa /> {/* Thay thế FaVisa */}
@@ -148,73 +149,70 @@ const Footer = () => {
         </LogoSection>
 
         <FooterSection>
-          <h3>Services</h3>
+          <h3>Dịch Vụ</h3>
           <LinksList>
             <li>
-              <Link to="/about">About our website</Link>
+              <Link to="/about">Trang web của chúng tôi</Link>
             </li>
             <li>
-              <Link to="/contact">Contact us</Link>
+              <Link to="/contact">Liên hệ với chúng tôi</Link>
             </li>
             <li>
-              <Link to="/news">News</Link>
+              <Link to="/news">Tin tức</Link>
             </li>
             <li>
-              <Link to="/store-location">Store location</Link>
+              <Link to="/store-location">Vị trí cửa hàng</Link>
             </li>
           </LinksList>
         </FooterSection>
 
         <FooterSection>
-          <h3>Privacy & Terms</h3>
+          <h3>Quyền riêng tư & Điều khoản</h3>
           <LinksList>
             <li>
-              <Link to="/payment-policy">Payment policy</Link>
+              <Link to="/payment-policy">Chính sách thanh toán</Link>
             </li>
             <li>
-              <Link to="/privacy-policy">Privacy policy</Link>
+              <Link to="/privacy-policy">Chính sách bảo mật</Link>
             </li>
             <li>
-              <Link to="/return-policy">Return policy</Link>
+              <Link to="/return-policy">Chính sách đổi trả</Link>
             </li>
             <li>
-              <Link to="/shipping-policy">Shipping policy</Link>
+              <Link to="/shipping-policy">Chính sách vận chuyển</Link>
             </li>
             <li>
-              <Link to="/terms">Terms & condition</Link>
+              <Link to="/terms">Điều khoản & điều kiện</Link>
             </li>
           </LinksList>
         </FooterSection>
 
         <FooterSection>
-          <h3>My Account</h3>
+          <h3>Tài Khoản Của Tôi</h3>
           <LinksList>
             <li>
-              <Link to="/account">My account</Link>
+              <Link to="/account">Tài khoản</Link>
             </li>
             <li>
-              <Link to="/cart">My cart</Link>
+              <Link to="/cart">Giỏ hàng</Link>
             </li>
             <li>
-              <Link to="/orders">Order history</Link>
+              <Link to="/orders">Lịch sử đặt hàng</Link>
             </li>
             <li>
-              <Link to="/wishlist">My wishlist</Link>
+              <Link to="/wishlist">Danh sách mong muốn</Link>
             </li>
             <li>
-              <Link to="/address">My address</Link>
+              <Link to="/address">Địa chỉ</Link>
             </li>
           </LinksList>
         </FooterSection>
 
         <FooterSection>
-          <h3>Location</h3>
+          <h3>Địa Chỉ</h3>
           <ContactItem>
             <FaMapMarkerAlt />
-            <span>
-              Lorem ipsum dolor sit amet consectetur. Maecenada duis lorem mi
-              mattis.
-            </span>
+            <span>Đại Học Duy Tân.</span>
           </ContactItem>
           <ContactItem>
             <FaPhone />
@@ -232,7 +230,7 @@ const Footer = () => {
       </FooterContent>
 
       <BottomBar>
-        <p>&copy; {currentYear} SM Store. All Rights Reserved.</p>
+        <p>&copy; {currentYear} SM Food Store.C2SE.34.</p>
       </BottomBar>
     </FooterContainer>
   );
