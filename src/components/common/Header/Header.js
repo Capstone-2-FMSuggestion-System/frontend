@@ -227,7 +227,7 @@ const Header = () => {
         <SearchContainer>
           <SearchInput
             type="text"
-            placeholder="Search for..."
+            placeholder="Tìm kiếm ..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
