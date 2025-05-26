@@ -2,17 +2,21 @@ import React from 'react';
 import styled from 'styled-components';
 import { useCart } from '../../../context/CartContext';
 import { useAuth } from '../../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const ProductListContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin: 10px 0;
-  padding: 15px;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 12px;
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid #dee2e6;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  position: relative;
+  z-index: 1;
 `;
 
 const ProductListHeader = styled.div`
@@ -51,32 +55,46 @@ const ProductIcon = styled.span`
 `;
 
 const ProductGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 10px;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
   
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  &::-webkit-scrollbar {
+    height: 6px;
   }
   
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: #555;
   }
 `;
 
 const ProductCard = styled.div`
   background: white;
-  border-radius: 10px;
-  padding: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
   border: 1px solid #e9ecef;
   position: relative;
-  max-width: 320px;
+  min-width: 180px;
+  max-width: 180px;
   
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
   }
 `;
 
@@ -95,19 +113,19 @@ const AvailableBadge = styled.div`
 
 const ProductImage = styled.img`
   width: 100%;
-  height: 140px;
+  height: 100px;
   object-fit: cover;
-  border-radius: 8px;
-  margin-bottom: 10px;
+  border-radius: 6px;
+  margin-bottom: 8px;
   background-color: #f8f9fa;
 `;
 
 const ProductName = styled.h5`
-  margin: 0 0 6px 0;
-  font-size: 14px;
+  margin: 0 0 4px 0;
+  font-size: 13px;
   font-weight: 600;
   color: #212529;
-  line-height: 1.3;
+  line-height: 1.2;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -117,18 +135,18 @@ const ProductName = styled.h5`
 const ProductPrice = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 6px;
+  margin-bottom: 6px;
 `;
 
 const CurrentPrice = styled.span`
-  font-size: 14px;
+  font-size: 13px;
   font-weight: bold;
   color: #dc3545;
 `;
 
 const OriginalPrice = styled.span`
-  font-size: 12px;
+  font-size: 11px;
   color: #6c757d;
   text-decoration: line-through;
 `;
@@ -155,8 +173,11 @@ const ProductDescription = styled.p`
 
 const ProductActions = styled.div`
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
+  position: relative;
+  z-index: 50;
+  pointer-events: auto;
 `;
 
 const AddToCartButton = styled.button`
@@ -164,12 +185,15 @@ const AddToCartButton = styled.button`
   background: #39c0ed;
   color: white;
   border: none;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 13px;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 100;
+  pointer-events: auto;
   
   &:hover:not(:disabled) {
     background: #2a9dbd;
@@ -183,109 +207,277 @@ const AddToCartButton = styled.button`
   }
 `;
 
-const ViewDetailButton = styled.button`
-  background: transparent;
-  color: #007bff;
-  border: 1px solid #007bff;
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  
-  &:hover {
-    background: #007bff;
-    color: white;
-  }
+const RecommendationText = styled.div`
+  font-size: 13px;
+  color: #6c757d;
+  margin-bottom: 12px;
+  font-style: italic;
+`;
+
+const EmptyMessage = styled.div`
+  text-align: center;
+  color: #6c757d;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 20px;
 `;
 
 const StockInfo = styled.div`
-  font-size: 11px;
-  color: ${props => props.inStock ? '#28a745' : '#dc3545'};
-  font-weight: 500;
-  margin-bottom: 8px;
   display: flex;
   align-items: center;
   gap: 4px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: ${props => props.inStock ? '#28a745' : '#dc3545'};
+  font-weight: 600;
 `;
 
 const StockIcon = styled.span`
   font-size: 10px;
 `;
 
-const EmptyMessage = styled.div`
-  text-align: center;
-  color: #6c757d;
-  font-style: italic;
-  padding: 20px;
-  background: white;
-  border-radius: 8px;
-  border: 2px dashed #dee2e6;
-`;
-
-const RecommendationText = styled.p`
-  color: #495057;
-  font-size: 14px;
-  margin: 0 0 15px 0;
-  padding: 12px;
-  background: rgba(57, 192, 237, 0.1);
-  border-radius: 8px;
-  border-left: 4px solid #39c0ed;
+const ViewDetailButton = styled.button`
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 100;
+  pointer-events: auto;
+  
+  &:hover {
+    background: #5a6268;
+    transform: translateY(-1px);
+  }
 `;
 
 const ProductList = ({ products, onViewDetail }) => {
   const { addToCart } = useCart();
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // Debug logs
+  console.log('🔍 ProductList RENDERED với', products?.length || 0, 'sản phẩm');
+  console.log('🔍 ProductList Debug Info:', {
+    apiUrl: process.env.REACT_APP_API_URL,
+    hasUser: !!user,
+    userToken: user?.token ? 'Present' : 'Missing',
+    productsCount: products?.length || 0,
+    environment: process.env.NODE_ENV
+  });
+
+  // Debug cấu trúc sản phẩm
+  if (products && products.length > 0) {
+    console.log('📦 Product Structure Debug:', {
+      firstProduct: products[0],
+      productKeys: Object.keys(products[0] || {}),
+      hasId: 'id' in (products[0] || {}),
+      hasProductId: 'product_id' in (products[0] || {}),
+      idValue: products[0]?.id,
+      productIdValue: products[0]?.product_id
+    });
+  }
 
   const handleAddToCart = async (product) => {
     if (!user) {
       alert('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng');
+      navigate('/login');
       return;
     }
 
-    try {
-      await addToCart({
-        product_id: product.id,
+    // Đảm bảo lấy đúng product_id
+    const productId = product.product_id || product.id;
+    
+    if (!productId) {
+      console.error('❌ Không tìm thấy product_id:', product);
+      alert('Lỗi: Không tìm thấy ID sản phẩm');
+      return;
+    }
+
+    // Lấy token từ authService thay vì user object
+    const { accessToken } = await import('../../../services/authService').then(module => 
+      module.default.tokenUtils.getTokens()
+    );
+
+    console.log('🛒 Thêm sản phẩm vào giỏ hàng:', {
+      originalProduct: product,
+      extractedProductId: productId,
+      productName: product.name,
+      apiUrl: `${process.env.REACT_APP_API_URL}/api/users/cart`,
+      hasUserToken: !!user.token,
+      hasAccessToken: !!accessToken,
+      userObject: user,
+      requestPayload: {
+        product_id: productId,
         quantity: 1
+      }
+    });
+
+    try {
+      // Sử dụng token từ authService
+      const tokenToUse = accessToken || user.token;
+      
+      if (!tokenToUse) {
+        alert('Không tìm thấy token xác thực. Vui lòng đăng nhập lại.');
+        navigate('/login');
+        return;
+      }
+
+      // Gọi API backend để thêm vào giỏ hàng
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/users/cart`, {
+        product_id: productId,
+        quantity: 1
+      }, {
+        headers: {
+          'Authorization': `Bearer ${tokenToUse}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('✅ Response thêm vào giỏ hàng:', response.data);
+
+      if (response.status === 200) {
+        // Cập nhật state giỏ hàng trong context với product object đầy đủ
+        await addToCart({
+          id: productId,
+          name: product.name,
+          price: product.price,
+          originalPrice: product.original_price,
+          image: product.image,
+          unit: product.unit || 'cái'
+        }, 1);
+        
+        // Hiển thị thông báo thành công
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: #28a745;
+          color: white;
+          padding: 12px 20px;
+          border-radius: 6px;
+          z-index: 10000;
+          font-size: 14px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          animation: slideIn 0.3s ease-out;
+        `;
+        notification.textContent = `✅ Đã thêm "${product.name}" vào giỏ hàng`;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+          if (document.body.contains(notification)) {
+            document.body.removeChild(notification);
+          }
+        }, 3000);
+      }
+    } catch (error) {
+      console.error('❌ Lỗi khi thêm vào giỏ hàng:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        config: error.config,
+        requestData: {
+          product_id: productId,
+          quantity: 1
+        }
       });
       
-      const notification = document.createElement('div');
-      notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #28a745;
-        color: white;
-        padding: 12px 20px;
-        border-radius: 6px;
-        z-index: 10000;
-        font-size: 14px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        animation: slideIn 0.3s ease-out;
-      `;
-      notification.textContent = `✅ Đã thêm "${product.name}" vào giỏ hàng`;
-      document.body.appendChild(notification);
+      let errorMessage = 'Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng';
       
-      setTimeout(() => {
-        if (document.body.contains(notification)) {
-          document.body.removeChild(notification);
+      if (error.response) {
+        console.log('Response error data:', error.response.data);
+        switch (error.response.status) {
+          case 401:
+            errorMessage = 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại';
+            navigate('/login');
+            break;
+          case 404:
+            errorMessage = 'Không tìm thấy sản phẩm';
+            break;
+          case 400:
+            errorMessage = error.response.data?.detail || error.response.data?.message || 'Dữ liệu không hợp lệ';
+            break;
+          default:
+            errorMessage = `Có lỗi xảy ra (${error.response.status}): ${error.response.data?.detail || 'Vui lòng thử lại sau'}`;
         }
-      }, 3000);
+      } else if (error.request) {
+        errorMessage = 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.';
+      }
       
-    } catch (error) {
-      console.error('Lỗi khi thêm vào giỏ hàng:', error);
-      alert('Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng');
+      alert(errorMessage);
     }
   };
 
-  const handleViewDetail = (product) => {
-    if (onViewDetail) {
-      onViewDetail(product);
-    } else {
-      // Sử dụng route frontend để mở trang chi tiết sản phẩm
-      // Frontend sẽ gọi API backend thông qua productService.getProductById()
-      window.open(`/products/${product.id}`, '_blank');
+  const handleViewDetail = async (product) => {
+    // Debug product structure
+    console.log('🔍 Product object for detail view:', product);
+    console.log('🔍 Available keys:', Object.keys(product || {}));
+    console.log('🔍 product.id:', product?.id);
+    console.log('🔍 product.product_id:', product?.product_id);
+    
+    // Đảm bảo lấy đúng product_id
+    const productId = product.product_id || product.id;
+    
+    if (!productId) {
+      console.error('❌ Không tìm thấy product_id:', product);
+      alert('Lỗi: Không tìm thấy ID sản phẩm');
+      return;
+    }
+
+    console.log('👁️ Xem chi tiết sản phẩm:', {
+      originalProduct: product,
+      extractedProductId: productId,
+      productName: product.name,
+      apiUrl: `${process.env.REACT_APP_API_URL}/api/e-commerce/products/${productId}`
+    });
+
+    try {
+      // Gọi API để lấy chi tiết sản phẩm
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/e-commerce/products/${productId}`);
+      
+      console.log('✅ Response chi tiết sản phẩm:', response.data);
+      
+      if (response.status === 200) {
+        if (onViewDetail) {
+          onViewDetail(response.data);
+        } else {
+          // Chuyển hướng đến trang chi tiết sản phẩm
+          navigate(`/products/${productId}`, { state: { product: response.data } });
+        }
+      }
+    } catch (error) {
+      console.error('❌ Lỗi khi lấy chi tiết sản phẩm:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        config: error.config,
+        requestedProductId: productId
+      });
+      
+      let errorMessage = 'Không thể xem chi tiết sản phẩm';
+      
+      if (error.response) {
+        console.log('Response error data:', error.response.data);
+        switch (error.response.status) {
+          case 404:
+            errorMessage = 'Không tìm thấy thông tin sản phẩm';
+            break;
+          default:
+            errorMessage = `Có lỗi xảy ra (${error.response.status}): ${error.response.data?.detail || 'Vui lòng thử lại sau'}`;
+        }
+      } else if (error.request) {
+        errorMessage = 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.';
+      }
+      
+      alert(errorMessage);
     }
   };
 
@@ -318,7 +510,7 @@ const ProductList = ({ products, onViewDetail }) => {
   }
 
   return (
-    <ProductListContainer>
+    <ProductListContainer className="product-list-container">
       <ProductListHeader>
         <ProductListTitleContainer>
           <ProductIcon>🛒</ProductIcon>
@@ -335,9 +527,10 @@ const ProductList = ({ products, onViewDetail }) => {
         {products.map((product) => {
           const discount = calculateDiscount(product.original_price, product.price);
           const isInStock = product.stock_quantity > 0;
+          const productId = product.product_id || product.id;
           
           return (
-            <ProductCard key={product.id}>
+            <ProductCard key={productId}>
               <AvailableBadge>Có sẵn</AvailableBadge>
               
               <ProductImage
@@ -376,7 +569,22 @@ const ProductList = ({ products, onViewDetail }) => {
               
               <ProductActions>
                 <AddToCartButton
-                  onClick={() => handleAddToCart(product)}
+                  onClick={(e) => {
+                    console.log('🔥 AddToCartButton CLICKED!', product.name);
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleAddToCart(product);
+                  }}
+                  onMouseDown={(e) => {
+                    console.log('🔥 AddToCartButton MOUSE DOWN!', product.name);
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onTouchStart={(e) => {
+                    console.log('🔥 AddToCartButton TOUCH START!', product.name);
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
                   disabled={!isInStock || !user}
                   title={!user ? 'Vui lòng đăng nhập để thêm vào giỏ hàng' : 
                          !isInStock ? 'Sản phẩm tạm hết hàng' : 'Thêm vào giỏ hàng'}
@@ -386,7 +594,22 @@ const ProductList = ({ products, onViewDetail }) => {
                 </AddToCartButton>
                 
                 <ViewDetailButton 
-                  onClick={() => handleViewDetail(product)}
+                  onClick={(e) => {
+                    console.log('🔥 ViewDetailButton CLICKED!', product.name);
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleViewDetail(product);
+                  }}
+                  onMouseDown={(e) => {
+                    console.log('🔥 ViewDetailButton MOUSE DOWN!', product.name);
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onTouchStart={(e) => {
+                    console.log('🔥 ViewDetailButton TOUCH START!', product.name);
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
                   title="Xem chi tiết sản phẩm"
                 >
                   Chi tiết

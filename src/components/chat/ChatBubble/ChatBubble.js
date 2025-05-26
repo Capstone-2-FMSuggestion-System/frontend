@@ -5,7 +5,7 @@ import MarkdownRenderer from '../MarkdownRenderer/MarkdownRenderer';
 import ProductList from '../ProductList/ProductList';
 import { MessageContainer, Avatar, Message, NewSessionButton, ProcessingTime, MessageWrapper, TypingIndicator, TypingDot } from './ChatBubble.styles';
 
-const ChatBubble = ({ message, isUser, avatar, isError, isAuthError, needNewSession, processingTime, isStreaming, availableProducts }) => {
+const ChatBubble = ({ message, isUser, avatar, isError, isAuthError, needNewSession, processingTime, isStreaming, availableProducts, productsTimestamp }) => {
   const { createNewChatSession } = useChat();
   const { logout } = useAuth();
   
@@ -16,9 +16,18 @@ const ChatBubble = ({ message, isUser, avatar, isError, isAuthError, needNewSess
   }
   
   const handleClick = (e) => {
+    // Không chặn events từ ProductList và buttons
+    if (e && (
+      e.target.closest('.product-list-container') ||
+      e.target.tagName === 'BUTTON' ||
+      e.target.closest('button')
+    )) {
+      console.log('🚫 ChatBubble: Không chặn event từ ProductList/Button');
+      return;
+    }
     if (e) {
       e.preventDefault();
-      e.stopPropagation(); // Ngăn sự kiện lan toả lên
+      e.stopPropagation();
     }
   };
 
@@ -36,7 +45,6 @@ const ChatBubble = ({ message, isUser, avatar, isError, isAuthError, needNewSess
   const handleNewSessionClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    // Xóa session_id khỏi localStorage (sử dụng đúng key)
     localStorage.removeItem('chat_conversation_id');
     createNewChatSession();
   };
@@ -44,7 +52,6 @@ const ChatBubble = ({ message, isUser, avatar, isError, isAuthError, needNewSess
   const handleLoginAgainClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    // Đăng xuất người dùng hiện tại và chuyển hướng đến trang đăng nhập
     logout();
     window.location.href = '/login';
   };
@@ -73,24 +80,33 @@ const ChatBubble = ({ message, isUser, avatar, isError, isAuthError, needNewSess
             </TypingIndicator>
           ) : (
             !isUser && message ? (
-              <MarkdownRenderer content={message} />
+              <>
+                <MarkdownRenderer content={message} />
+                {/* Debug log để theo dõi available products */}
+                {(() => {
+                  if (availableProducts && availableProducts.length > 0) {
+                    console.log('🔍 ChatBubble: Hiển thị', availableProducts.length, 'sản phẩm có sẵn');
+                  }
+                  return null;
+                })()}
+                {/* Hiển thị danh sách sản phẩm ngay sau nội dung tin nhắn */}
+                {availableProducts && availableProducts.length > 0 && (
+                  <ProductList 
+                    key={`products-${productsTimestamp || Date.now()}`}
+                    products={availableProducts}
+                    onViewDetail={(product) => {
+                      const productId = product.product_id || product.id;
+                      console.log('🔍 ChatBubble onViewDetail:', { product, productId });
+                      window.open(`/products/${productId}`, '_blank');
+                    }}
+                  />
+                )}
+              </>
             ) : (
               message
             )
           )}
         </Message>
-        
-        {/* Hiển thị danh sách sản phẩm có sẵn nếu có */}
-        {console.log('🔍 ChatBubble availableProducts:', availableProducts)}
-        {availableProducts && availableProducts.length > 0 && !isUser && (
-          <ProductList 
-            products={availableProducts}
-            onViewDetail={(product) => {
-              // Mở trang chi tiết sản phẩm trong tab mới
-              window.open(`/products/${product.id}`, '_blank');
-            }}
-          />
-        )}
         
         {processingTime && !isUser && (
           <ProcessingTime isUser={isUser}>

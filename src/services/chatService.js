@@ -301,7 +301,7 @@ export const getSimilarProducts = async (question, limit = 3) => {
 // Gửi tin nhắn với streaming response - Kết nối với /api/stream-chat của @base_chat
 // API Doc: POST /api/stream-chat -> Request: ChatRequest { message: string, conversation_id: Optional[int] }
 // API Doc: Response: StreamingResponse với Server-Sent Events
-export const sendMessageToStreamChat = async (conversationId, userMessage, onChunk, onComplete, onError) => {
+export const sendMessageToStreamChat = async (conversationId, userMessage, onChunk, onComplete, onError, onAvailableProducts) => {
   try {
     if (!conversationId) {
       console.error("sendMessageToStreamChat: conversationId is required.");
@@ -373,6 +373,14 @@ export const sendMessageToStreamChat = async (conversationId, userMessage, onChu
                 const replacedText = JSON.parse(parsed.replace);
                 fullResponse = replacedText;
                 onChunk(replacedText, true); // true indicates replacement
+                continue;
+              }
+              // ⭐ XỬ LÝ AVAILABLE_PRODUCTS TỪ STREAMING
+              if (parsed.type === 'available_products' && parsed.data) {
+                console.log('🔍 Streaming: Nhận được available_products:', parsed.data);
+                if (onAvailableProducts && typeof onAvailableProducts === 'function') {
+                  onAvailableProducts(parsed.data);
+                }
                 continue;
               }
             } catch (e) {

@@ -27,6 +27,13 @@ const MessagesContainer = ({ messages, isLoading, similarProducts }) => {
   // Thêm event listener cho tất cả sự kiện chuột
   useEffect(() => {
     const stopPropagation = (e) => {
+      // KHÔNG chặn events từ ProductList buttons
+      if (e.target.closest('.product-list-container') || 
+          e.target.tagName === 'BUTTON' || 
+          e.target.closest('button')) {
+        console.log('🚫 MessagesContainer: Không chặn event từ ProductList/Button');
+        return;
+      }
       e.stopPropagation();
     };
 
@@ -56,11 +63,25 @@ const MessagesContainer = ({ messages, isLoading, similarProducts }) => {
   }, []);
   
   const handleContainerClick = (e) => {
+    // KHÔNG chặn events từ ProductList buttons
+    if (e.target.closest('.product-list-container') || 
+        e.target.tagName === 'BUTTON' || 
+        e.target.closest('button')) {
+      console.log('🚫 MessagesContainer handleContainerClick: Không chặn event từ ProductList/Button');
+      return;
+    }
     e.stopPropagation(); // Ngăn sự kiện lan toả lên
     e.preventDefault(); // Ngăn hành vi mặc định
   };
   
   const handleAllEvents = (e) => {
+    // KHÔNG chặn events từ ProductList buttons
+    if (e && (e.target.closest('.product-list-container') || 
+              e.target.tagName === 'BUTTON' || 
+              e.target.closest('button'))) {
+      console.log('🚫 MessagesContainer handleAllEvents: Không chặn event từ ProductList/Button');
+      return;
+    }
     if (e) {
       e.stopPropagation();
       e.preventDefault();
@@ -110,6 +131,7 @@ const MessagesContainer = ({ messages, isLoading, similarProducts }) => {
                 processingTime={msg.processingTime}
                 isStreaming={msg.isStreaming}
                 availableProducts={msg.availableProducts}
+                productsTimestamp={msg.productsTimestamp}
               />
             )}
             

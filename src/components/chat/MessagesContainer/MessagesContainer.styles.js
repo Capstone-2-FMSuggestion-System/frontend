@@ -4,11 +4,13 @@ export const Container = styled.div`
   flex: 1;
   padding: 12px 16px;
   overflow-y: auto;
+  overflow-x: hidden;
   scroll-behavior: smooth;
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-height: 0;
+  max-width: 100%;
 `;
 
 export const LoadingContainer = styled.div`
