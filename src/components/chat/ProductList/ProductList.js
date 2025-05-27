@@ -262,26 +262,26 @@ const ProductList = ({ products, onViewDetail }) => {
   const navigate = useNavigate();
 
   // Debug logs
-  console.log('🔍 ProductList RENDERED với', products?.length || 0, 'sản phẩm');
-  console.log('🔍 ProductList Debug Info:', {
-    apiUrl: process.env.REACT_APP_API_URL,
-    hasUser: !!user,
-    userToken: user?.token ? 'Present' : 'Missing',
-    productsCount: products?.length || 0,
-    environment: process.env.NODE_ENV
-  });
+  // console.log('🔍 ProductList RENDERED với', products?.length || 0, 'sản phẩm');
+  // console.log('🔍 ProductList Debug Info:', {
+  //   apiUrl: process.env.REACT_APP_API_URL,
+  //   hasUser: !!user,
+  //   userToken: user?.token ? 'Present' : 'Missing',
+  //   productsCount: products?.length || 0,
+  //   environment: process.env.NODE_ENV
+  // });
 
   // Debug cấu trúc sản phẩm
-  if (products && products.length > 0) {
-    console.log('📦 Product Structure Debug:', {
-      firstProduct: products[0],
-      productKeys: Object.keys(products[0] || {}),
-      hasId: 'id' in (products[0] || {}),
-      hasProductId: 'product_id' in (products[0] || {}),
-      idValue: products[0]?.id,
-      productIdValue: products[0]?.product_id
-    });
-  }
+  // if (products && products.length > 0) {
+  //   console.log('📦 Product Structure Debug:', {
+  //     firstProduct: products[0],
+  //     productKeys: Object.keys(products[0] || {}),
+  //     hasId: 'id' in (products[0] || {}),
+  //     hasProductId: 'product_id' in (products[0] || {}),
+  //     idValue: products[0]?.id,
+  //     productIdValue: products[0]?.product_id
+  //   });
+  // }
 
   const handleAddToCart = async (product) => {
     if (!user) {

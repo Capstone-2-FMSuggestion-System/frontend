@@ -10,8 +10,8 @@ import { AuthContext } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 
 const LoginContainer = styled.div`
-  max-width: 700px;
-  width: 100%;
+  // max-width: 900px;
+  width: 400px;
   margin: 0 auto;
   padding: 15px 25px;
   border-radius: 8px;
@@ -304,7 +304,7 @@ const Login = () => {
           )}
         </Formik>
 
-        <OrDivider>
+        {/* <OrDivider>
           <span>Hoặc đăng nhập / đăng ký với</span>
         </OrDivider>
 
@@ -315,7 +315,7 @@ const Login = () => {
           <FacebookButton onClick={handleFacebookLogin}>
             <FaFacebook /> Tiếp tục với Facebook
           </FacebookButton>
-        </div>
+        </div> */}
 
         <SignupPrompt>
           Chưa có tài khoản?

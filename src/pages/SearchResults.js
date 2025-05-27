@@ -101,16 +101,16 @@ const SearchResults = () => {
     <MainLayout>
       <Container>
         <SearchHeader>
-          <SearchTitle>Search Results</SearchTitle>
+          <SearchTitle>Kết quả tìm kiếm</SearchTitle>
           {!loading && (
             <SearchInfo>
-              {totalResults} results found for "{query}"
+              {totalResults} kết quả tìm thấy cho "{query}"
             </SearchInfo>
           )}
         </SearchHeader>
 
         {loading ? (
-          <p>Loading results...</p>
+          <p>Đang tải kết quả...</p>
         ) : (products && products.length > 0) ? (
           <>
             <ProductGrid>
@@ -129,8 +129,8 @@ const SearchResults = () => {
           </>
         ) : (
           <NoResults>
-            <p>No results found for "{query}".</p>
-            <p>Please try a different search term or browse our categories.</p>
+            <p>Không tìm thấy kết quả nào cho "{query}".</p>
+            <p>Vui lòng thử một thuật ngữ tìm kiếm khác hoặc duyệt qua các danh mục của chúng tôi.</p>
           </NoResults>
         )}
       </Container>

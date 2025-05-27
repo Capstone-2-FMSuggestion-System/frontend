@@ -362,7 +362,7 @@ const Checkout = () => {
   return (
     <MainLayout>
       <CheckoutContainer>
-        <CheckoutTitle>Checkout</CheckoutTitle>
+        <CheckoutTitle>Hoàn tất thanh toán</CheckoutTitle>
 
         <Formik
           initialValues={initialValues}
@@ -404,17 +404,17 @@ const Checkout = () => {
               <Form>
                 <CheckoutContent>
                   <CheckoutForm>
-                    <SectionTitle>Shipping Information</SectionTitle>
+                    <SectionTitle>Thông tin vận chuyển</SectionTitle>
 
                     <FormRow cols={2}>
                       <FormGroup>
-                        <Label htmlFor="firstName">First Name</Label>
+                        <Label htmlFor="firstName">Tên đầu tiên</Label>
                         <Input type="text" id="firstName" name="firstName" />
                         <ErrorMessage name="firstName" component={ErrorText} />
                       </FormGroup>
 
                       <FormGroup>
-                        <Label htmlFor="lastName">Last Name</Label>
+                        <Label htmlFor="lastName">Họ</Label>
                         <Input type="text" id="lastName" name="lastName" />
                         <ErrorMessage name="lastName" component={ErrorText} />
                       </FormGroup>
@@ -428,21 +428,21 @@ const Checkout = () => {
                       </FormGroup>
 
                       <FormGroup>
-                        <Label htmlFor="phone">Phone</Label>
+                        <Label htmlFor="phone">Số điện thoại</Label>
                         <Input type="tel" id="phone" name="phone" />
                         <ErrorMessage name="phone" component={ErrorText} />
                       </FormGroup>
                     </FormRow>
 
                     <FormGroup>
-                      <Label htmlFor="address">Address</Label>
+                      <Label htmlFor="address">Địa chỉ</Label>
                       <Input type="text" id="address" name="address" />
                       <ErrorMessage name="address" component={ErrorText} />
                     </FormGroup>
 
                     <FormRow cols={2}>
                       <FormGroup>
-                        <Label htmlFor="city">City</Label>
+                        <Label htmlFor="city">Thành phố</Label>
                         <Input type="text" id="city" name="city" />
                         <ErrorMessage name="city" component={ErrorText} />
                       </FormGroup>
