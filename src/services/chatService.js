@@ -188,31 +188,64 @@ export const getChatContent = async (conversationId) => {
       return { messages: [], error: 'Không có conversation_id để tải lịch sử' };
     }
     
+    console.log('🔍 DEBUG getChatContent: Gọi API với conversationId:', conversationId);
+    
     // Thử endpoint test trước (không cần authentication)
     try {
+      console.log('🔍 DEBUG: Thử test endpoint trước...');
       const testResponse = await chatApi.get(`/test-chatContent`, { params: { conversation_id: conversationId } });
+      console.log('🔍 DEBUG: Test endpoint response:', {
+        status: testResponse.status,
+        hasData: !!testResponse.data,
+        hasError: !!testResponse.data?.error,
+        messagesCount: testResponse.data?.messages?.length || 0,
+        availableProductsCount: testResponse.data?.available_products?.length || 0
+      });
+      
       if (testResponse.data && !testResponse.data.error) {
-        return {
+        const result = {
           messages: testResponse.data.messages || [],
           conversation_id: testResponse.data.conversation_id || conversationId,
           user_id: testResponse.data.user_id,
           created_at: testResponse.data.created_at,
           available_products: testResponse.data.available_products || [],
         };
+        console.log('🔍 DEBUG: Test endpoint final result:', {
+          messagesCount: result.messages.length,
+          availableProductsCount: result.available_products.length,
+          availableProductsSample: result.available_products.slice(0, 2)
+        });
+        return result;
       }
     } catch (testError) {
-      console.log('Test endpoint không khả dụng, thử endpoint chính:', testError.message);
+      console.log('🔍 DEBUG: Test endpoint không khả dụng, thử endpoint chính:', testError.message);
     }
     
     // Fallback về endpoint chính (cần authentication)
+    console.log('🔍 DEBUG: Gọi endpoint chính /chatContent...');
     const response = await chatApi.get(`/chatContent`, { params: { conversation_id: conversationId } });
-    return {
+    console.log('🔍 DEBUG: Main endpoint response:', {
+      status: response.status,
+      hasData: !!response.data,
+      messagesCount: response.data?.messages?.length || 0,
+      availableProductsCount: response.data?.available_products?.length || 0
+    });
+    
+    const result = {
       messages: response.data.messages || [],
       conversation_id: response.data.conversation_id || conversationId,
       user_id: response.data.user_id,
       created_at: response.data.created_at,
       available_products: response.data.available_products || [],
     };
+    
+    console.log('🔍 DEBUG: Main endpoint final result:', {
+      messagesCount: result.messages.length,
+      availableProductsCount: result.available_products.length,
+      availableProductsSample: result.available_products.slice(0, 2)
+    });
+    
+    return result;
   } catch (error) {
     console.error('Lỗi khi lấy lịch sử trò chuyện từ @base_chat:', error);
     // Xử lý lỗi xác thực

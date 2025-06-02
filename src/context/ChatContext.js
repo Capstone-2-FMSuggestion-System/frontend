@@ -30,18 +30,31 @@ export const ChatProvider = ({ children }) => {
     const savedMessageCount = parseInt(localStorage.getItem(MESSAGE_COUNT_KEY) || '0', 10);
     const savedIsNewChat = localStorage.getItem(IS_NEW_CHAT_KEY) === 'true';
     
+    console.log('🔍 DEBUG useEffect: Khởi động ChatContext', {
+      savedConversationId,
+      savedMessageCount,
+      savedIsNewChat,
+      messagesLength: messages.length,
+      allLocalStorageKeys: Object.keys(localStorage)
+    });
+    
     if (savedConversationId) {
+      console.log('🔍 DEBUG: Tìm thấy conversation_id trong localStorage:', savedConversationId);
       console.log('Khôi phục conversation_id từ localStorage:', savedConversationId);
       setConversationId(savedConversationId);
       setIsNewChat(savedIsNewChat);
       
       // Nếu đã có tin nhắn, không cần tải lại lịch sử
       if (messages.length === 0) {
+        console.log('🔍 DEBUG: Messages rỗng, sẽ gọi loadChatHistory...');
         // Luôn gọi API để lấy lịch sử trò chuyện nếu có conversation_id
         loadChatHistory(savedConversationId);
+      } else {
+        console.log('🔍 DEBUG: Đã có messages, không load lại lịch sử');
       }
     } else {
       // Đánh dấu đã thử load (không có gì để load)
+      console.log('🔍 DEBUG: Không có conversation_id trong localStorage');
       setHasTriedLoadHistory(true);
     }
     
@@ -68,7 +81,11 @@ export const ChatProvider = ({ children }) => {
       setHasTriedLoadHistory(true);
       setHistoryLoadError(null);
       
+      console.log('🔍 DEBUG: Bắt đầu loadChatHistory với conversationId:', chatConversationId);
+      
       const historyData = await getChatContent(chatConversationId);
+      
+      console.log('🔍 DEBUG: Raw historyData từ getChatContent:', JSON.stringify(historyData, null, 2));
       
       // Kiểm tra lỗi xác thực
       if (historyData.authError) {
@@ -113,9 +130,20 @@ export const ChatProvider = ({ children }) => {
         return;
       }
       
+      console.log('🔍 DEBUG: historyData.available_products:', historyData.available_products);
+      console.log('🔍 DEBUG: historyData.messages length:', historyData.messages ? historyData.messages.length : 0);
+      
       if (historyData.messages && historyData.messages.length > 0) {
         // Giữ nguyên thứ tự tin nhắn từ API (tin nhắn cũ nhất trước, mới nhất sau)
         const orderedMessages = [...historyData.messages];
+        
+        console.log('🔍 DEBUG: orderedMessages:', orderedMessages.map((msg, idx) => ({
+          index: idx,
+          role: msg.role,
+          hasContent: !!msg.content,
+          hasUserMessage: !!msg.user_message,
+          hasAiResponse: !!msg.ai_response
+        })));
         
         // Chuyển đổi tin nhắn từ API thành định dạng hiển thị
         const formattedMessages = orderedMessages.flatMap((msg, index) => {
@@ -136,7 +164,10 @@ export const ChatProvider = ({ children }) => {
           const isLastMessage = index === orderedMessages.length - 1;
           const availableProducts = isLastMessage ? (historyData.available_products || []) : [];
           
-          console.log(`🔍 ChatContext loadHistory: Message ${index}, isLastMessage: ${isLastMessage}, availableProducts:`, availableProducts);
+          console.log(`🔍 DEBUG ChatContext loadHistory: Message ${index}, isLastMessage: ${isLastMessage}, availableProducts count: ${availableProducts.length}`);
+          if (availableProducts.length > 0) {
+            console.log('🔍 DEBUG availableProducts sample:', availableProducts.slice(0, 2));
+          }
           
           messages.push({
             id: botMsgId,
@@ -153,6 +184,13 @@ export const ChatProvider = ({ children }) => {
           
           return messages;
         });
+        
+        console.log('🔍 DEBUG: formattedMessages với products:', formattedMessages.map(msg => ({
+          id: msg.id,
+          isUser: msg.isUser,
+          hasProducts: !!msg.availableProducts,
+          productsCount: msg.availableProducts ? msg.availableProducts.length : 0
+        })));
         
         // Cập nhật messages và messageCount
         setMessages(formattedMessages);

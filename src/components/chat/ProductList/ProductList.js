@@ -8,15 +8,26 @@ import axios from 'axios';
 const ProductListContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin: 8px 0;
-  padding: 12px;
+  gap: 6px;
+  margin: 6px 0 0 0;
+  padding: 10px;
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid #dee2e6;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   position: relative;
-  z-index: 1;
+  z-index: 3;
+  clear: both;
+  max-width: 100%;
+  overflow: hidden;
+  
+  /* Đảm bảo không bị đè lên nội dung chat */
+  &::before {
+    content: '';
+    display: block;
+    height: 0;
+    clear: both;
+  }
 `;
 
 const ProductListHeader = styled.div`

@@ -5,14 +5,14 @@ import styled from 'styled-components';
 
 const MarkdownContainer = styled.div`
   font-family: inherit;
-  line-height: 1.2;
+  line-height: 1.3;
   word-wrap: break-word;
   
   h1, h2, h3, h4, h5, h6 {
-    margin: 2px 0 1px 0;
+    margin: 3px 0 2px 0;
     font-weight: 700;
     color: inherit;
-    line-height: 1.1;
+    line-height: 1.2;
   }
   
   h1 { font-size: 18px; }
@@ -23,8 +23,8 @@ const MarkdownContainer = styled.div`
   h6 { font-size: 12px; }
   
   p {
-    margin: 1px 0;
-    line-height: 1.2;
+    margin: 0 0 3px 0;
+    line-height: 1.3;
     word-wrap: break-word;
   }
   
@@ -35,30 +35,30 @@ const MarkdownContainer = styled.div`
   
   /* Khoảng cách giữa đoạn văn và danh sách */
   p + ul, p + ol {
-    margin-top: 1px;
-  }
-  
-  ul + p, ol + p {
     margin-top: 2px;
   }
   
+  ul + p, ol + p {
+    margin-top: 3px;
+  }
+  
   ul, ol {
-    margin: 1px 0;
+    margin: 2px 0 3px 0;
     padding-left: 16px;
-    line-height: 1.2;
+    line-height: 1.3;
   }
   
   li {
-    margin: 0 0 1px 0;
-    line-height: 1.2;
+    margin: 0 0 2px 0;
+    line-height: 1.3;
     padding: 0;
     word-wrap: break-word;
   }
   
   /* Xử lý đặc biệt cho numbered lists */
   ol li {
-    margin-bottom: 1px;
-    line-height: 1.2;
+    margin-bottom: 2px;
+    line-height: 1.3;
   }
   
   /* Xử lý content trong list items */
@@ -75,13 +75,13 @@ const MarkdownContainer = styled.div`
   
   /* Xử lý nested lists */
   li ul, li ol {
-    margin: 1px 0;
+    margin: 2px 0;
     padding-left: 12px;
   }
   
   /* Xử lý nguyên liệu lists - formatting đặc biệt */
   li:has(strong:first-child) {
-    margin-bottom: 1px;
+    margin-bottom: 2px;
   }
   
   strong {
@@ -185,7 +185,7 @@ const MarkdownContainer = styled.div`
     color: #007bff;
   }
   
-  /* Loại bỏ khoảng trắng thừa */
+  /* Tối ưu hóa spacing - giảm khoảng trắng thừa */
   * {
     margin-block-start: 0 !important;
     margin-block-end: 0 !important;
@@ -193,31 +193,10 @@ const MarkdownContainer = styled.div`
   
   /* Override default browser spacing */
   ol, ul {
-    margin-block-start: 1px !important;
-    margin-block-end: 1px !important;
+    margin-block-start: 2px !important;
+    margin-block-end: 3px !important;
     margin-inline-start: 0 !important;
     margin-inline-end: 0 !important;
-  }
-  
-  li {
-    margin-block-start: 0 !important;
-    margin-block-end: 1px !important;
-  }
-  
-  p {
-    margin-block-start: 1px !important;
-    margin-block-end: 1px !important;
-  }
-  
-  /* Responsive spacing */
-  @media (max-width: 768px) {
-    ul, ol {
-      padding-left: 12px;
-    }
-    
-    li ul, li ol {
-      padding-left: 8px;
-    }
   }
 `;
 
